@@ -1,10 +1,10 @@
 <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Width="458" Height="542"
-      TextElement.FontFamily="Segoe UI, Yu Gothic UI" TextElement.Foreground="#F0F2DF"
+      TextElement.FontFamily="Segoe UI, Yu Gothic UI" TextElement.Foreground="#E3F4F4"
       TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
   <Grid.Resources>
     <Style TargetType="Button">
-      <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#E7EBD9"/>
+      <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#DBEDF0"/>
       <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Padding" Value="7,3"/><Setter Property="FontSize" Value="12"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
@@ -12,57 +12,57 @@
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="surface" Property="Opacity" Value="0.78"/><Setter TargetName="surface" Property="BorderBrush" Value="#778568"/><Setter TargetName="surface" Property="BorderThickness" Value="1"/></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="surface" Property="BorderBrush" Value="#DBEF9C"/><Setter TargetName="surface" Property="BorderThickness" Value="1"/></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="surface" Property="Opacity" Value="0.78"/><Setter TargetName="surface" Property="BorderBrush" Value="#55818A"/><Setter TargetName="surface" Property="BorderThickness" Value="1"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="surface" Property="BorderBrush" Value="#8FEDE5"/><Setter TargetName="surface" Property="BorderThickness" Value="1"/></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
   </Grid.Resources>
-  <Border CornerRadius="14" BorderThickness="1" BorderBrush="#495347" Background="#141B19"/>
+  <Border CornerRadius="14" BorderThickness="1" BorderBrush="#36545F" Background="#0B1923"/>
   <Grid Margin="1" ClipToBounds="True">
     <Grid x:Name="Face">
       <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="101"/><RowDefinition Height="*"/><RowDefinition Height="68"/><RowDefinition Height="43"/></Grid.RowDefinitions>
       <Grid Margin="20,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
         <Viewbox Width="24" Height="24"><Canvas Width="24" Height="24">
-          <Ellipse Width="16" Height="16" Canvas.Left="4" Canvas.Top="4" Stroke="#D3F394" StrokeThickness="1.4"/>
-          <Path Data="M2,18 C-1,14 19,1 22,6 C25,10 5,23 2,18" Stroke="#D3F394" StrokeThickness="1.25"/>
-          <Ellipse Width="4" Height="4" Fill="#D3F394" Canvas.Left="17" Canvas.Top="4"/>
+          <Ellipse Width="16" Height="16" Canvas.Left="4" Canvas.Top="4" Stroke="#7BE5DA" StrokeThickness="1.4"/>
+          <Path Data="M2,18 C-1,14 19,1 22,6 C25,10 5,23 2,18" Stroke="#7BE5DA" StrokeThickness="1.25"/>
+          <Ellipse Width="4" Height="4" Fill="#7BE5DA" Canvas.Left="17" Canvas.Top="4"/>
         </Canvas></Viewbox>
         <TextBlock Text="ORBIT" Margin="9,0,0,0" FontSize="18" FontWeight="Bold" FontFamily="Bahnschrift"/>
-        <TextBlock Text="CALENDAR" Margin="7,0,0,0" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#AAB7A9"/>
+        <TextBlock Text="CALENDAR" Margin="7,0,0,0" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#99BAC4"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-        <Ellipse Width="5" Height="5" Fill="#D3F394" Margin="0,0,6,0"/><TextBlock Text="LOCAL" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#AAB7A9"/>
+        <Ellipse Width="5" Height="5" Fill="#7BE5DA" Margin="0,0,6,0"/><TextBlock Text="LOCAL" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#99BAC4"/>
         <Button Name="CloseButton" Content="×" FontSize="19" Width="29" Height="29" Margin="10,0,-5,0" ToolTip="時計に戻る (Esc)" AutomationProperties.Name="時計に戻る"/>
       </StackPanel></Grid>
-      <Grid Grid.Row="1" ClipToBounds="True" Background="#202C26">
+      <Grid Grid.Row="1" ClipToBounds="True" Background="#102835">
         <Canvas x:Name="SkyMap" IsHitTestVisible="False" ClipToBounds="True"/>
-        <Border Height="1" Background="#3A493D" VerticalAlignment="Top"/>
+        <Border Height="1" Background="#2A4D58" VerticalAlignment="Top"/>
         <StackPanel Margin="21,13,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
-          <TextBlock Name="Year" Foreground="#D3F394" FontFamily="Consolas" FontWeight="Bold" FontSize="12"/>
+          <TextBlock Name="Year" Foreground="#7BE5DA" FontFamily="Consolas" FontWeight="Bold" FontSize="12"/>
           <StackPanel Orientation="Horizontal">
             <TextBlock Name="Month" FontSize="44" FontFamily="Bahnschrift" FontWeight="SemiBold" VerticalAlignment="Center"/>
             <TextBlock Text="月" FontSize="19" FontWeight="SemiBold" Margin="6,9,0,0" VerticalAlignment="Center"/>
           </StackPanel>
         </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,10">
-          <Button Name="Previous" Content="‹" Width="30" Height="27" FontFamily="Segoe UI" FontSize="18" Padding="0" Background="#26372F" ToolTip="前の月" AutomationProperties.Name="前の月"/>
-          <Button Name="Today" Content="今日" Margin="4,0" Background="#26372F" Padding="10,2"/>
-          <Button Name="Next" Content="›" Width="30" Height="27" FontSize="18" Padding="0" Background="#26372F" ToolTip="次の月" AutomationProperties.Name="次の月"/>
+          <Button Name="Previous" Content="‹" Width="30" Height="27" FontFamily="Segoe UI" FontSize="18" Padding="0" Background="#1C3E49" ToolTip="前の月" AutomationProperties.Name="前の月"/>
+          <Button Name="Today" Content="今日" Margin="4,0" Background="#1C3E49" Padding="10,2"/>
+          <Button Name="Next" Content="›" Width="30" Height="27" FontSize="18" Padding="0" Background="#1C3E49" ToolTip="次の月" AutomationProperties.Name="次の月"/>
         </StackPanel>
       </Grid>
       <Grid Name="Dates" Grid.Row="2" Margin="16,10,16,8"/>
-      <Border Grid.Row="3" Background="#212B25" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
+      <Border Grid.Row="3" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid><StackPanel VerticalAlignment="Center">
-          <TextBlock Name="SelectedLabel" Foreground="#C2D79A" FontSize="10" FontFamily="Consolas"/>
+          <TextBlock Name="SelectedLabel" Foreground="#8FE4DD" FontSize="10" FontFamily="Consolas"/>
           <TextBlock Name="SelectedDate" FontSize="16" FontWeight="SemiBold" Margin="0,2,0,0"/>
         </StackPanel>
-        <Button Name="Copy" Content="日付をコピー" Background="#354338" Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        <Button Name="Copy" Content="日付をコピー" Background="#254552" Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </Grid>
       </Border>
-      <Border Grid.Row="4" BorderBrush="#323D34" BorderThickness="0,1,0,0" Margin="17,0">
-        <Grid><TextBlock Name="DayCount" Foreground="#A9B4A3" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas"/>
-        <Button Name="FocusButton" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#D3F394" Content="▶   集中 25 分" ToolTip="25分の集中タイマーを開始・解除"/></Grid>
+      <Border Grid.Row="4" BorderBrush="#25424C" BorderThickness="0,1,0,0" Margin="17,0">
+        <Grid><TextBlock Name="DayCount" Foreground="#91B4BE" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas"/>
+        <Button Name="FocusButton" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#7BE5DA" Content="▶   集中 25 分" ToolTip="25分の集中タイマーを開始・解除"/></Grid>
       </Border>
     </Grid>
     <Grid Name="Effects" IsHitTestVisible="False" ClipToBounds="True"/>

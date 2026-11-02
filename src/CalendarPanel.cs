@@ -16,7 +16,7 @@ namespace OrbitCalendar
         readonly AssemblyEffect effect;
         readonly Action collapse, toggleFocus;
         readonly CultureInfo ja = CultureInfo.GetCultureInfo("ja-JP");
-        readonly Brush lime = Art.Ink("#D3F394"), muted = Art.Ink("#A8B2A4"), lines = Art.Ink("#2E3931");
+        readonly Brush aqua = Art.Ink("#7BE5DA"), muted = Art.Ink("#96ADB8"), lines = Art.Ink("#203A46");
         DateTime selected = DateTime.Today, today = DateTime.Today;
         DateTime copiedUntil;
 
@@ -41,6 +41,7 @@ namespace OrbitCalendar
             Get<Button>("CloseButton").Click += delegate { collapse(); };
             Get<Button>("FocusButton").Click += delegate { toggleFocus(); };
             Get<Button>("Copy").Click += delegate { CopyDate(); };
+            root.MouseMove += delegate(object sender, MouseEventArgs e) { effect.Nudge(e.GetPosition(effect)); };
             PreviewKeyDown += OnKey;
             IsVisibleChanged += delegate { if (!IsVisible) effect.Stop(); };
             for (int c = 0; c < 8; c++) dates.ColumnDefinitions.Add(new ColumnDefinition { Width = c == 0 ? new GridLength(37) : new GridLength(1, GridUnitType.Star) });
@@ -84,8 +85,13 @@ namespace OrbitCalendar
         void SelectDate(DateTime date)
         {
             if (date.Year < 2 || date.Year > 9998) return;
+            bool changeMonth = date.Month != selected.Month || date.Year != selected.Year;
+            effect.Stop();
+            if (changeMonth) effect.Remember();
             selected = date;
             DrawDates();
+            if (changeMonth) { UpdateLayout(); effect.Start(true); }
+            else effect.Resample();
         }
 
         void Place(UIElement item, int col, int row)
@@ -108,12 +114,14 @@ namespace OrbitCalendar
             Get<TextBlock>("Month").Text = selected.Month.ToString("00");
             Place(Label("週", muted, 11), 0, 0);
             string[] days = { "月", "火", "水", "木", "金", "土", "日" };
-            var weekend = Art.Ink("#D6C5A1");
+            var blue = Art.Ink("#8EC5FF");
+            var red = Art.Ink("#FF9699");
             for (int col = 1; col <= 7; col++)
             {
                 var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                labels.Children.Add(Label(col.ToString("00"), muted, 9));
-                labels.Children.Add(Label(days[col - 1], col > 5 ? weekend : Brushes.WhiteSmoke, 12));
+                var dayColor = col == 6 ? blue : col == 7 ? red : muted;
+                labels.Children.Add(Label(col.ToString("00"), dayColor, 9));
+                labels.Children.Add(Label(days[col - 1], col > 5 ? dayColor : Brushes.WhiteSmoke, 12));
                 Place(labels, col, 0);
             }
             var first = new DateTime(selected.Year, selected.Month, 1);
@@ -125,7 +133,7 @@ namespace OrbitCalendar
                 Grid.SetColumnSpan(rule, 8);
                 Place(rule, 0, row);
                 bool currentWeek = selected >= monday && selected < monday.AddDays(7);
-                var week = Label(IsoWeek(monday).ToString("00"), currentWeek ? lime : muted, 12);
+                var week = Label(IsoWeek(monday).ToString("00"), currentWeek ? aqua : muted, 12);
                 week.FontFamily = new FontFamily("Consolas");
                 week.ToolTip = "ISO 第" + IsoWeek(monday) + "週";
                 Place(week, 0, row);
@@ -133,17 +141,21 @@ namespace OrbitCalendar
                 {
                     var day = monday.AddDays(col - 1);
                     bool active = day == selected;
+                    string holiday = Holidays.Name(day);
+                    bool redDay = holiday != null || col == 7;
+                    Brush ink = redDay ? red : col == 6 ? blue : Art.Ink("#D9E9EB");
+                    if (active) ink = Art.Ink(redDay ? "#822736" : col == 6 ? "#174C81" : "#0B2830");
                     var button = new Button { Content = day.Day.ToString(), Margin = new Thickness(3, 3, 3, 2),
                         Padding = new Thickness(0), FontSize = 16, FontFamily = new FontFamily("Bahnschrift"),
                         FontWeight = active ? FontWeights.Bold : FontWeights.Normal,
-                        Background = active ? lime : Brushes.Transparent,
-                        Foreground = active ? Art.Ink("#172419") : day.Month != selected.Month ? Art.Ink("#778379") : col > 5 ? weekend : Art.Ink("#E4EADB") };
-                    AutomationProperties.SetName(button, day.ToString("yyyy年M月d日", ja));
+                        Background = active ? aqua : Brushes.Transparent,
+                        Foreground = ink, Opacity = day.Month == selected.Month ? 1 : .62, ToolTip = holiday };
+                    AutomationProperties.SetName(button, (day.ToString("yyyy年M月d日", ja) + " " + holiday).TrimEnd());
                     button.Click += delegate { SelectDate(day); };
                     Place(button, col, row);
                     if (day == today)
                     {
-                        var dot = new Border { Width = 4, Height = 3, CornerRadius = new CornerRadius(2), Background = active ? Art.Ink("#263A23") : lime,
+                        var dot = new Border { Width = 4, Height = 3, CornerRadius = new CornerRadius(2), Background = active ? Art.Ink("#16454C") : aqua,
                             VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 5), IsHitTestVisible = false };
                         Place(dot, col, row);
                     }
@@ -151,6 +163,8 @@ namespace OrbitCalendar
             }
             Get<TextBlock>("SelectedLabel").Text = "SELECTED    /    W" + IsoWeek(selected).ToString("00");
             Get<TextBlock>("SelectedDate").Text = selected.ToString("M月d日  dddd", ja);
+            var selectedHoliday = Holidays.Name(selected);
+            if (selectedHoliday != null) Get<TextBlock>("SelectedLabel").Text += "    /    " + selectedHoliday;
             Get<TextBlock>("DayCount").Text = "DAY  " + selected.DayOfYear.ToString("000") + "  /  " + (DateTime.IsLeapYear(selected.Year) ? "366" : "365");
             Get<Button>("Copy").Content = "日付をコピー";
         }
@@ -161,7 +175,7 @@ namespace OrbitCalendar
             Show();
             Activate();
             UpdateLayout();
-            effect.Start();
+            effect.Start(false);
         }
 
         public void Tick(DateTime now, string focus)
@@ -171,6 +185,7 @@ namespace OrbitCalendar
                 if (selected == today) selected = now.Date;
                 today = now.Date;
                 DrawDates();
+                effect.Resample();
             }
             if (copiedUntil != default(DateTime) && DateTime.UtcNow >= copiedUntil)
             {
