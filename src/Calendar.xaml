@@ -20,8 +20,8 @@
   </Grid.Resources>
   <Border CornerRadius="14" BorderThickness="1" BorderBrush="#36545F" Background="#0B1923"/>
   <Grid Margin="1" ClipToBounds="True">
-    <Grid x:Name="Face">
-      <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="101"/><RowDefinition Height="*"/><RowDefinition Height="68"/><RowDefinition Height="43"/></Grid.RowDefinitions>
+    <Grid Opacity="0"><Grid x:Name="Face">
+      <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Grid Margin="20,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
         <Viewbox Width="24" Height="24"><Canvas Width="24" Height="24">
           <Ellipse Width="16" Height="16" Canvas.Left="4" Canvas.Top="4" Stroke="#7BE5DA" StrokeThickness="1.4"/>
@@ -32,10 +32,13 @@
         <TextBlock Text="CALENDAR" Margin="7,0,0,0" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#99BAC4"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-        <Ellipse Width="5" Height="5" Fill="#7BE5DA" Margin="0,0,6,0"/><TextBlock Text="LOCAL" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#99BAC4"/>
+        <Button Name="CalendarTab" Content="カレンダー" ToolTip="カレンダー" AutomationProperties.Name="カレンダー" Width="78"/>
+        <Button Name="MarketTab" Content="株価" Margin="4,0" Width="46"/>
+        <Button Name="WeatherTab" Content="雨雲" Width="46"/>
         <Button Name="CloseButton" Content="×" FontSize="19" Width="29" Height="29" Margin="10,0,-5,0" ToolTip="時計に戻る (Esc)" AutomationProperties.Name="時計に戻る"/>
       </StackPanel></Grid>
-      <Grid Grid.Row="1" ClipToBounds="True" Background="#102835">
+      <Grid Grid.Row="1" Name="CalendarBody"><Grid.RowDefinitions><RowDefinition Height="101"/><RowDefinition Height="*"/><RowDefinition Height="68"/><RowDefinition Height="43"/></Grid.RowDefinitions>
+      <Grid Grid.Row="0" ClipToBounds="True" Background="#102835">
         <Canvas x:Name="SkyMap" IsHitTestVisible="False" ClipToBounds="True"/>
         <Border Height="1" Background="#2A4D58" VerticalAlignment="Top"/>
         <StackPanel Margin="21,13,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
@@ -51,19 +54,33 @@
           <Button Name="Next" Content="›" Width="30" Height="27" FontSize="18" Padding="0" Background="#1C3E49" ToolTip="次の月" AutomationProperties.Name="次の月"/>
         </StackPanel>
       </Grid>
-      <Grid Name="Dates" Grid.Row="2" Margin="16,10,16,8"/>
-      <Border Grid.Row="3" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
+      <Grid Name="Dates" Grid.Row="1" Margin="16,10,16,8"/>
+      <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid><StackPanel VerticalAlignment="Center">
-          <TextBlock Name="SelectedLabel" Foreground="#8FE4DD" FontSize="10" FontFamily="Consolas"/>
+          <TextBlock Name="SelectedLabel" Foreground="#8FE4DD" FontSize="12" FontFamily="Consolas"/>
           <TextBlock Name="SelectedDate" FontSize="16" FontWeight="SemiBold" Margin="0,2,0,0"/>
         </StackPanel>
         <Button Name="Copy" Content="日付をコピー" Background="#254552" Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </Grid>
       </Border>
-      <Border Grid.Row="4" BorderBrush="#25424C" BorderThickness="0,1,0,0" Margin="17,0">
+      <Border Grid.Row="3" BorderBrush="#25424C" BorderThickness="0,1,0,0" Margin="17,0">
         <Grid><TextBlock Name="DayCount" Foreground="#91B4BE" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas"/>
         <Button Name="FocusButton" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#7BE5DA" Content="▶   集中 25 分" ToolTip="25分の集中タイマーを開始・解除"/></Grid>
       </Border>
+      </Grid>
+      <StackPanel Grid.Row="1" Name="DataBody" Margin="20,12" Visibility="Collapsed">
+        <TextBlock Name="SectionLabel" Foreground="#86E8DE" FontFamily="Consolas" FontSize="13"/>
+        <TextBlock Name="DataTitle" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock Name="DataStamp" Foreground="#D0E5EB" FontSize="14" Margin="0,4,0,8"/>
+        <StackPanel Orientation="Horizontal" Height="33">
+          <Button Name="Choice0" Margin="0,0,5,0"/><Button Name="Choice1" Margin="0,0,5,0"/><Button Name="Choice2"/>
+          <Button Name="RefreshData" Content="更新" Margin="18,0,0,0"/>
+        </StackPanel>
+        <Canvas Name="Plot" Width="414" Height="255" Margin="0,12,0,0" ClipToBounds="True"/>
+        <TextBlock Name="PlotCaption" Foreground="#CAEAEB" FontSize="13" Margin="0,6,0,6"/>
+        <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
+      </StackPanel>
+    </Grid>
     </Grid>
     <Grid Name="Effects" IsHitTestVisible="False" ClipToBounds="True"/>
   </Grid>

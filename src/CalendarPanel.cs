@@ -10,7 +10,7 @@ using System.Windows.Media;
 
 namespace OrbitCalendar
 {
-    internal class CalendarPanel : Window
+    internal partial class CalendarPanel : Window
     {
         readonly Grid root, dates;
         readonly AssemblyEffect effect;
@@ -47,11 +47,13 @@ namespace OrbitCalendar
             for (int c = 0; c < 8; c++) dates.ColumnDefinitions.Add(new ColumnDefinition { Width = c == 0 ? new GridLength(37) : new GridLength(1, GridUnitType.Star) });
             for (int r = 0; r < 7; r++) dates.RowDefinitions.Add(new RowDefinition { Height = r == 0 ? new GridLength(35) : new GridLength(1, GridUnitType.Star) });
             DrawDates();
+            InitializeViews();
         }
 
         void OnKey(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape) collapse();
+            else if (mode != 0) return;
             else if (e.Key == Key.PageUp) MoveMonth(-1);
             else if (e.Key == Key.PageDown) MoveMonth(1);
             else if (e.Key == Key.Home) SelectDate(DateTime.Today);
@@ -67,6 +69,7 @@ namespace OrbitCalendar
             catch (System.Runtime.InteropServices.ExternalException) { label = "再試行してください"; }
             Get<Button>("Copy").Content = label;
             copiedUntil = DateTime.UtcNow.AddSeconds(2);
+            effect.Refresh();
         }
 
         internal static int IsoDay(DateTime date) { return ((int)date.DayOfWeek + 6) % 7 + 1; }
@@ -87,11 +90,10 @@ namespace OrbitCalendar
             if (date.Year < 2 || date.Year > 9998) return;
             bool changeMonth = date.Month != selected.Month || date.Year != selected.Year;
             effect.Stop();
-            if (changeMonth) effect.Remember();
             selected = date;
             DrawDates();
             if (changeMonth) { UpdateLayout(); effect.Start(true); }
-            else effect.Resample();
+            else effect.Refresh();
         }
 
         void Place(UIElement item, int col, int row)
@@ -120,8 +122,8 @@ namespace OrbitCalendar
             {
                 var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
                 var dayColor = col == 6 ? blue : col == 7 ? red : muted;
-                labels.Children.Add(Label(col.ToString("00"), dayColor, 9));
-                labels.Children.Add(Label(days[col - 1], col > 5 ? dayColor : Brushes.WhiteSmoke, 12));
+                labels.Children.Add(Label(col.ToString("00"), dayColor, 11));
+                labels.Children.Add(Label(days[col - 1], col > 5 ? dayColor : Brushes.WhiteSmoke, 13));
                 Place(labels, col, 0);
             }
             var first = new DateTime(selected.Year, selected.Month, 1);
@@ -146,7 +148,7 @@ namespace OrbitCalendar
                     Brush ink = redDay ? red : col == 6 ? blue : Art.Ink("#D9E9EB");
                     if (active) ink = Art.Ink(redDay ? "#822736" : col == 6 ? "#174C81" : "#0B2830");
                     var button = new Button { Content = day.Day.ToString(), Margin = new Thickness(3, 3, 3, 2),
-                        Padding = new Thickness(0), FontSize = 16, FontFamily = new FontFamily("Bahnschrift"),
+                        Padding = new Thickness(0), FontSize = 18, FontFamily = new FontFamily("Bahnschrift"),
                         FontWeight = active ? FontWeights.Bold : FontWeights.Normal,
                         Background = active ? aqua : Brushes.Transparent,
                         Foreground = ink, Opacity = day.Month == selected.Month ? 1 : .62, ToolTip = holiday };
@@ -172,6 +174,7 @@ namespace OrbitCalendar
         public void Open()
         {
             Shell.Position(this, 458, 542);
+            if (mode != 0) SwitchView(0);
             Show();
             Activate();
             UpdateLayout();
@@ -180,19 +183,27 @@ namespace OrbitCalendar
 
         public void Tick(DateTime now, string focus)
         {
+            if (IsVisible && mode != 0 && loading == null && DateTime.UtcNow >= nextUpdate) LoadView(false);
             if (today != now.Date)
             {
                 if (selected == today) selected = now.Date;
                 today = now.Date;
                 DrawDates();
-                effect.Resample();
+                effect.Refresh();
             }
             if (copiedUntil != default(DateTime) && DateTime.UtcNow >= copiedUntil)
             {
                 copiedUntil = default(DateTime);
                 Get<Button>("Copy").Content = "日付をコピー";
+                if (mode == 0) effect.Refresh();
             }
-            Get<Button>("FocusButton").Content = focus.Length == 0 ? "▶   集中 25 分" : "■   集中  " + focus;
+            var label = focus.Length == 0 ? "▶   集中 25 分" : "■   集中  " + focus;
+            var button = Get<Button>("FocusButton");
+            if (!Equals(label, button.Content))
+            {
+                button.Content = label;
+                if (mode == 0) effect.Refresh();
+            }
         }
     }
 }

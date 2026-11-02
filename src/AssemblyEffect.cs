@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -20,24 +19,17 @@ namespace OrbitCalendar
         readonly UIElement face;
         readonly Stopwatch watch = new Stopwatch();
         readonly Random random = new Random();
-        readonly RadialGradientBrush shadow;
-        readonly Dictionary<Color, Brush> inks = new Dictionary<Color, Brush>();
         Grain[] grains;
         WriteableBitmap layer;
         int[] raster;
         Point pointer;
         double seconds, pointerTime;
-        bool assembling, morph, rendering;
-        const double Gather = .85, Rest = 1.49, Finish = 1.85;
+        bool assembling, morph, rendering, dirty;
+        const double Gather = .85;
 
         public AssemblyEffect(UIElement face)
         {
             this.face = face;
-            shadow = new RadialGradientBrush();
-            shadow.GradientStops.Add(new GradientStop(Color.FromRgb(10, 24, 33), 0));
-            shadow.GradientStops.Add(new GradientStop(Color.FromArgb(228, 10, 24, 33), .55));
-            shadow.GradientStops.Add(new GradientStop(Colors.Transparent, 1));
-            shadow.Freeze();
         }
 
         Grain[] Sample()
@@ -46,25 +38,31 @@ namespace OrbitCalendar
             if (w <= 0 || h <= 0) return new Grain[0];
             var frame = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
             frame.Render(face);
-            var pixels = new byte[w * h * 4];
-            frame.CopyPixels(pixels, w * 4, 0);
+            var pixels = new byte[frame.PixelWidth * frame.PixelHeight * 4];
+            frame.CopyPixels(pixels, frame.PixelWidth * 4, 0);
             var dots = new List<Grain>();
-            for (int y = 1; y < h; y += 2)
-                for (int x = 1; x < w; x += 2)
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
                 {
                     int p = (y * w + x) * 4;
                     int b = pixels[p], g = pixels[p + 1], r = pixels[p + 2];
-                    if (Math.Max(r, Math.Max(g, b)) < 72) continue;
-                    dots.Add(new Grain { Target = new Point(x, y), Ink = Color.FromRgb((byte)r, (byte)g, (byte)b) });
+                    if (Math.Max(r, Math.Max(g, b)) < 61) continue;
+                    // A bright core and dimmer interstitial grains preserve the fine
+                    // strokes of kana and small numbers on a 1x display.
+                    double light = (x % 2 == 0 && y % 2 == 0) ? 1.12 :
+                        (x % 2 == 1 && y % 2 == 1) ? .42 : .90;
+                    dots.Add(new Grain { Target = new Point(x, y), Ink = Color.FromRgb(
+                        (byte)Math.Min(255, r * light), (byte)Math.Min(255, g * light), (byte)Math.Min(255, b * light)) });
                 }
             return dots.ToArray();
         }
 
         public void Start(bool fromPrevious)
         {
+            dirty = false;
             var old = grains;
             Stop();
-            if (!SystemParameters.ClientAreaAnimation) return;
+            face.UpdateLayout();
             grains = Sample();
             if (grains.Length == 0) return;
             morph = fromPrevious && old != null && old.Length > 0;
@@ -86,12 +84,11 @@ namespace OrbitCalendar
                 layer = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
                 raster = new int[w * h];
             }
-            assembling = true;
-            face.Opacity = 0;
+            assembling = SystemParameters.ClientAreaAnimation;
             seconds = 0;
             watch.Restart();
-            PaintFlight();
-            Listen();
+            Paint();
+            if (assembling) Listen();
         }
 
         static double Ease(double t)
@@ -104,7 +101,7 @@ namespace OrbitCalendar
         // drawing objects per frame. Accumulate premultiplied light at intersections.
         void Splat(int i, int red, int green, int blue, double weight)
         {
-            int src = (int)((.15 + .85 * weight) * 255);
+            int src = (int)((.08 + .92 * weight) * 255);
             if (src <= 0) return;
             int prev = raster[i];
             int a = Math.Min(255, (int)((uint)prev >> 24) + src);
@@ -114,27 +111,43 @@ namespace OrbitCalendar
             raster[i] = (a << 24) | (r << 16) | (g << 8) | b;
         }
 
-        void PaintFlight()
+        void Paint()
         {
             Array.Clear(raster, 0, raster.Length);
             int w = layer.PixelWidth, h = layer.PixelHeight;
             foreach (var g in grains)
             {
-                double angle = g.Longitude + seconds * g.Speed;
-                double longitudeRadius = Math.Cos(g.Latitude) * g.Radius;
-                double x = Math.Sin(angle) * longitudeRadius, y = Math.Sin(g.Latitude) * g.Radius;
-                double depth = Math.Cos(angle) * longitudeRadius / g.Radius;
-                double t = morph ? Ease((seconds - g.Lag * .30) / .46) : Ease((seconds - .31 - g.Lag) / Gather);
-                double ox = morph ? g.Origin.X : .5 * w + .94 * x + .34 * y;
-                double oy = morph ? g.Origin.Y : .50 * h + .94 * y - .34 * x;
-                double curl = Math.Sin(t * Math.PI) * (morph ? 11 : 39);
-                double px = ox + (g.Target.X - ox) * t + Math.Sin(angle) * curl;
-                double py = oy + (g.Target.Y - oy) * t + Math.Cos(angle) * curl;
+                double px = g.Target.X, py = g.Target.Y;
+                int red = g.Ink.R, green = g.Ink.G, blue = g.Ink.B;
+                if (assembling)
+                {
+                    double angle = g.Longitude + seconds * g.Speed;
+                    double ring = Math.Cos(g.Latitude) * g.Radius;
+                    double x = Math.Sin(angle) * ring, y = Math.Sin(g.Latitude) * g.Radius;
+                    double t = morph ? Ease((seconds - g.Lag * .30) / .46) : Ease((seconds - .31 - g.Lag) / Gather);
+                    double ox = morph ? g.Origin.X : .5 * w + .94 * x + .34 * y;
+                    double oy = morph ? g.Origin.Y : .50 * h + .94 * y - .34 * x;
+                    double curl = Math.Sin(t * Math.PI) * (morph ? 11 : 39);
+                    px = ox + (px - ox) * t + Math.Sin(angle) * curl;
+                    py = oy + (py - oy) * t + Math.Cos(angle) * curl;
+                    double light = .63 + .32 * Math.Cos(angle) * ring / g.Radius;
+                    red = (int)(29 * light * (1 - t) + red * t);
+                    green = (int)(235 * light * (1 - t) + green * t);
+                    blue = (int)(248 * light * (1 - t) + blue * t);
+                }
+                else if (pointerTime > 0)
+                {
+                    var delta = g.Target - pointer;
+                    double d = delta.LengthSquared;
+                    if (d > .01 && d < 32 * 32)
+                    {
+                        d = Math.Sqrt(d);
+                        double push = (1 - d / 32) * 13 * pointerTime / d;
+                        px += delta.X * push;
+                        py += delta.Y * push;
+                    }
+                }
                 if (px < 0 || py < 0 || px >= w - 1 || py >= h - 1) continue;
-                double light = .63 + .32 * depth;
-                int red = (int)(29 * light * (1 - t) + g.Ink.R * t);
-                int green = (int)(235 * light * (1 - t) + g.Ink.G * t);
-                int blue = (int)(248 * light * (1 - t) + g.Ink.B * t);
                 int ix = (int)px, iy = (int)py, i = iy * w + ix;
                 double fx = px - ix, fy = py - iy;
                 Splat(i, red, green, blue, (1 - fx) * (1 - fy));
@@ -146,17 +159,19 @@ namespace OrbitCalendar
             InvalidateVisual();
         }
 
-        public void Remember()
+        public void Refresh()
         {
-            if (grains == null && SystemParameters.ClientAreaAnimation) grains = Sample();
+            if (layer == null || !IsVisible) return;
+            face.UpdateLayout();
+            if (assembling) { dirty = true; return; }
+            grains = Sample();
+            Paint();
         }
-
-        public void Resample() { Stop(); grains = null; }
 
         public void Nudge(Point p)
         {
             if (assembling || !SystemParameters.ClientAreaAnimation) return;
-            if (grains == null) grains = Sample();
+            if (layer == null) return;
             pointer = p;
             pointerTime = 1;
             watch.Restart();
@@ -174,45 +189,20 @@ namespace OrbitCalendar
             seconds = watch.Elapsed.TotalSeconds;
             if (assembling)
             {
-                double rest = morph ? .55 : Rest, finish = morph ? .76 : Finish;
-                if (seconds >= finish) { Stop(); return; }
-                face.Opacity = Ease((seconds - rest) / (finish - rest));
-                Opacity = 1 - face.Opacity;
-                PaintFlight();
+                if (seconds >= (morph ? .55 : 1.42)) Stop();
             }
             else
             {
                 pointerTime = 1 - Ease(seconds / .55);
-                if (pointerTime <= 0) Stop();
-                else InvalidateVisual();
+                if (pointerTime <= 0) { Stop(); dirty = true; }
             }
+            if (dirty && !assembling) { dirty = false; face.UpdateLayout(); grains = Sample(); }
+            Paint();
         }
 
         protected override void OnRender(DrawingContext dc)
         {
-            if (assembling) { dc.DrawImage(layer, new Rect(0, 0, layer.PixelWidth, layer.PixelHeight)); return; }
-            if (pointerTime <= 0 || grains == null) return;
-            const double radius = 32;
-            dc.PushOpacity(pointerTime);
-            dc.DrawEllipse(shadow, null, pointer, radius, radius);
-            foreach (var g in grains)
-            {
-                var delta = g.Target - pointer;
-                double d2 = delta.LengthSquared;
-                if (d2 > radius * radius || d2 < .01) continue;
-                double distance = Math.Sqrt(d2);
-                double push = (1 - distance / radius) * 13 * pointerTime;
-                var pos = g.Target + delta * (push / distance);
-                Brush ink;
-                if (!inks.TryGetValue(g.Ink, out ink))
-                {
-                    ink = new SolidColorBrush(g.Ink);
-                    ink.Freeze();
-                    inks.Add(g.Ink, ink);
-                }
-                dc.DrawEllipse(ink, null, pos, .8, .8);
-            }
-            dc.Pop();
+            if (layer != null) dc.DrawImage(layer, new Rect(face.RenderSize));
         }
 
         public void Stop()
@@ -221,7 +211,6 @@ namespace OrbitCalendar
             rendering = assembling = false;
             pointerTime = 0;
             watch.Stop();
-            face.Opacity = Opacity = 1;
             InvalidateVisual();
         }
     }
