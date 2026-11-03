@@ -68,6 +68,7 @@ namespace OrbitCalendar
 
         void SwitchView(int value)
         {
+            Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             StopRadar();
             if (loading != null) loading.Cancel();
             mode = value;

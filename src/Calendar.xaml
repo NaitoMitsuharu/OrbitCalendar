@@ -42,7 +42,7 @@
             <TextBlock Text="月" FontSize="19" FontWeight="SemiBold" Margin="6,9,0,0" VerticalAlignment="Center"/>
           </StackPanel>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,10">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,156,10">
           <Button Name="Previous" Content="‹" Width="30" Height="27" FontFamily="Segoe UI" FontSize="18" Padding="0" Background="#1C3E49" ToolTip="前の月" AutomationProperties.Name="前の月"/>
           <Button Name="Today" Content="今日" Margin="4,0" Background="#1C3E49" Padding="10,2"/>
           <Button Name="Next" Content="›" Width="30" Height="27" FontSize="18" Padding="0" Background="#1C3E49" ToolTip="次の月" AutomationProperties.Name="次の月"/>
@@ -81,6 +81,17 @@
         </StackPanel>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
+      <Border Name="TimerPicker" Grid.RowSpan="2" Width="312" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,48"
+              Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="12" Visibility="Collapsed">
+        <StackPanel>
+          <Grid Margin="4,0,4,8">
+            <TextBlock Text="タイマーの時間" FontSize="15" Foreground="#8FE4DD" VerticalAlignment="Center"/>
+            <Button Name="CloseTimePicker" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
+          </Grid>
+          <UniformGrid Name="TimeChoices" Columns="4"/>
+          <TextBlock Text="時間を選び、▶ でスタート" Foreground="#92B5BE" FontSize="12" Margin="4,10,0,0"/>
+        </StackPanel>
+      </Border>
     </Grid>
     </Grid>
     <Grid Name="Effects" IsHitTestVisible="False" ClipToBounds="True"/>

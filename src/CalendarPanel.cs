@@ -35,7 +35,22 @@ namespace OrbitCalendar
             effect = new AssemblyEffect(Get<Grid>("Face"), Get<Border>("ShellSurface"));
             Get<Grid>("Effects").Children.Add(effect);
             Content = new Viewbox { Child = root, Stretch = Stretch.Uniform };
-            Art.DrawSky(Get<Canvas>("SkyMap"));
+            var earth = new EarthGlobe();
+            Get<Canvas>("SkyMap").Children.Add(earth);
+            var rotation = new System.Diagnostics.Stopwatch();
+            var earthTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(125) };
+            earthTick.Tick += delegate
+            {
+                if (!SystemParameters.ClientAreaAnimation || mode != 0 || effect.Busy) return;
+                earth.Rotation = rotation.Elapsed.TotalSeconds * .14;
+                earth.InvalidateVisual();
+                effect.RefreshArea(new Rect(322, 53, 95, 94));
+            };
+            IsVisibleChanged += delegate
+            {
+                if (IsVisible) { rotation.Start(); earthTick.Start(); }
+                else { rotation.Stop(); earthTick.Stop(); }
+            };
             Get<Button>("Previous").Click += delegate { MoveMonth(-1); };
             Get<Button>("Next").Click += delegate { MoveMonth(1); };
             Get<Button>("Today").Click += delegate { SelectDate(DateTime.Today); };
@@ -62,7 +77,12 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (e.Key == Key.Escape) collapse();
+            if (e.Key == Key.Escape && Get<Border>("TimerPicker").Visibility == Visibility.Visible)
+            {
+                Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
+                effect.Refresh();
+            }
+            else if (e.Key == Key.Escape) collapse();
             else if (mode != 0) return;
             else if (e.Key == Key.PageUp) MoveMonth(-1);
             else if (e.Key == Key.PageDown) MoveMonth(1);
@@ -172,6 +192,7 @@ namespace OrbitCalendar
         {
             if (!IsVisible || IsClosing) return;
             if (loading != null) loading.Cancel();
+            Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             root.IsHitTestVisible = false;
             effect.Dismiss(Hide);
         }

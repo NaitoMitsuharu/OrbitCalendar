@@ -11,7 +11,8 @@ namespace OrbitCalendar
     {
         struct Grain
         {
-            public Point Target, Origin;
+            public Point Target, Origin, Current;
+            public bool Edge;
             public double Latitude, Longitude, Radius, Speed, Lag;
             public Color Ink;
         }
@@ -24,6 +25,7 @@ namespace OrbitCalendar
         int[] raster;
         readonly UIElement surface;
         Action onDismissed;
+        public bool Busy { get { return assembling || Closing; } }
         public bool Closing { get { return onDismissed != null; } }
         double seconds;
         bool assembling, morph, rendering, dirty;
@@ -36,7 +38,9 @@ namespace OrbitCalendar
             this.surface = surface;
         }
 
-        Grain[] Sample()
+        Grain[] Sample() { return Sample(new Rect(face.RenderSize)); }
+
+        Grain[] Sample(Rect area)
         {
             int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
             if (w <= 0 || h <= 0) return new Grain[0];
@@ -45,8 +49,8 @@ namespace OrbitCalendar
             var pixels = new byte[frame.PixelWidth * frame.PixelHeight * 4];
             frame.CopyPixels(pixels, frame.PixelWidth * 4, 0);
             var dots = new List<Grain>();
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
+            for (int y = (int)area.Top; y < Math.Min(h, area.Bottom); y++)
+                for (int x = (int)area.Left; x < Math.Min(w, area.Right); x++)
                 {
                     int p = (y * w + x) * 4;
                     int b = pixels[p], g = pixels[p + 1], r = pixels[p + 2];
@@ -58,7 +62,17 @@ namespace OrbitCalendar
                     if (Preferences.Pattern == 1) light = x % 3 == 0 && y % 3 == 0 ? 1.15 : .42;
                     else if (Preferences.Pattern == 2) light = y % 3 == 0 ? 1.12 : .45;
                     else if (Preferences.Pattern == 3) light = ((x * 17 + y * 31) % 11 < 3) ? 1.3 : .66;
-                    dots.Add(new Grain { Target = new Point(x, y), Ink = Color.FromRgb(
+                    bool edge = false;
+                    for (int dy = -1; dy <= 1 && !edge; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int nx = x + dx, ny = y + dy;
+                            if (nx < 0 || ny < 0 || nx >= w || ny >= h) { edge = true; break; }
+                            int at = (ny * w + nx) * 4;
+                            if (Math.Abs(r - pixels[at + 2]) + Math.Abs(g - pixels[at + 1]) + Math.Abs(b - pixels[at]) > 105)
+                            { edge = true; break; }
+                        }
+                    dots.Add(new Grain { Target = new Point(x, y), Edge = edge, Ink = Color.FromRgb(
                         (byte)Math.Min(255, r * light), (byte)Math.Min(255, g * light), (byte)Math.Min(255, b * light)) });
                 }
             return dots.ToArray();
@@ -84,7 +98,13 @@ namespace OrbitCalendar
                 grains[i].Radius = i % 7 == 0 ? 102 + random.NextDouble() * 51 : 82 + random.NextDouble() * 3;
                 grains[i].Speed = i % 7 == 0 ? -2 : 2.5;
                 grains[i].Lag = random.NextDouble() * .25;
-                if (morph) grains[i].Origin = old[(int)((long)i * old.Length / grains.Length)].Target;
+                if (morph) grains[i].Origin = old[(int)((long)i * old.Length / grains.Length)].Current;
+                else
+                {
+                    double angle = grains[i].Longitude;
+                    grains[i].Origin = new Point(grains[i].Target.X * .28 + 420 * .72 + Math.Cos(angle) * 65,
+                        grains[i].Target.Y * .28 + 535 * .72 + Math.Sin(angle) * 65);
+                }
             }
             int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
             if (layer == null || layer.PixelWidth != w || layer.PixelHeight != h)
@@ -123,54 +143,70 @@ namespace OrbitCalendar
         {
             Array.Clear(raster, 0, raster.Length);
             int w = layer.PixelWidth, h = layer.PixelHeight;
-            foreach (var g in grains)
+            for (int index = 0; index < grains.Length; index++)
             {
+                var g = grains[index];
                 double px = g.Target.X, py = g.Target.Y;
                 int red = g.Ink.R, green = g.Ink.G, blue = g.Ink.B;
                 if (assembling)
                 {
-                    double angle = g.Longitude + seconds * g.Speed;
-                    double ring = Math.Cos(g.Latitude) * g.Radius;
-                    double x = Math.Sin(angle) * ring, y = Math.Sin(g.Latitude) * g.Radius;
-                    double t = Ease((seconds - .38 - g.Lag) / Gather);
-                    double ox = .5 * w + .94 * x + .34 * y;
-                    double oy = .50 * h + .94 * y - .34 * x;
-                    if (motionStyle == 2)
+                    if (motionStyle == 6)
                     {
-                        double spiral = g.Longitude + seconds * (3 + g.Lag * 8);
-                        double radius = 35 + Math.Abs(g.Latitude) * 175;
-                        ox = w * .5 + Math.Cos(spiral) * radius;
-                        oy = h * .5 + Math.Sin(spiral) * radius;
+                        double delay = g.Edge ? .025 + g.Lag * .55 : .26 + g.Lag * 1.1;
+                        double duration = g.Edge ? .57 : .91;
+                        double progress = Math.Max(0, Math.Min(1, (seconds - delay) / duration));
+                        double attraction = 1 - Math.Pow(1 - progress, 3);
+                        attraction += Math.Sin(progress * Math.PI * 5) * .035 * Math.Pow(1 - progress, 2);
+                        var displacement = g.Target - g.Origin;
+                        double bend = Math.Sin(Math.PI * progress) * (g.Edge ? 9 : 23);
+                        px = g.Origin.X + displacement.X * attraction + Math.Cos(g.Longitude) * bend;
+                        py = g.Origin.Y + displacement.Y * attraction + Math.Sin(g.Longitude) * bend;
                     }
-                    else if (motionStyle == 3)
+                    else
                     {
-                        ox = (g.Longitude / (2 * Math.PI)) * w;
-                        oy = ((seconds * 280 + g.Latitude * h * 2) % (h + 180)) - 120;
+                        double angle = g.Longitude + seconds * g.Speed;
+                        double ring = Math.Cos(g.Latitude) * g.Radius;
+                        double x = Math.Sin(angle) * ring, y = Math.Sin(g.Latitude) * g.Radius;
+                        double t = Ease((seconds - .38 - g.Lag) / Gather);
+                        double ox = .5 * w + .94 * x + .34 * y;
+                        double oy = .50 * h + .94 * y - .34 * x;
+                        if (motionStyle == 2)
+                        {
+                            double spiral = g.Longitude + seconds * (3 + g.Lag * 8);
+                            double radius = 35 + Math.Abs(g.Latitude) * 175;
+                            ox = w * .5 + Math.Cos(spiral) * radius;
+                            oy = h * .5 + Math.Sin(spiral) * radius;
+                        }
+                        else if (motionStyle == 3)
+                        {
+                            ox = (g.Longitude / (2 * Math.PI)) * w;
+                            oy = ((seconds * 280 + g.Latitude * h * 2) % (h + 180)) - 120;
+                        }
+                        else if (motionStyle == 4)
+                        {
+                            double radius = 50 + seconds * 240;
+                            ox = w * .5 + Math.Cos(g.Longitude) * radius;
+                            oy = h * .5 + Math.Sin(g.Longitude) * radius;
+                        }
+                        else if (motionStyle == 5)
+                        {
+                            ox = g.Longitude / (2 * Math.PI) * w;
+                            oy = h * .5 + Math.Sin(ox / 47 + seconds * 5) * (55 + Math.Abs(g.Latitude) * 100);
+                        }
+                        if (morph)
+                        {
+                            double scatter = Ease(seconds / .35);
+                            ox = g.Origin.X + (ox - g.Origin.X) * scatter;
+                            oy = g.Origin.Y + (oy - g.Origin.Y) * scatter;
+                        }
+                        double curl = Math.Sin(t * Math.PI) * 24;
+                        px = ox + (px - ox) * t + Math.Sin(angle) * curl;
+                        py = oy + (py - oy) * t + Math.Cos(angle) * curl;
+                        double light = .63 + .32 * Math.Cos(angle) * ring / g.Radius;
+                        red = (int)(29 * light * (1 - t) + red * t);
+                        green = (int)(235 * light * (1 - t) + green * t);
+                        blue = (int)(248 * light * (1 - t) + blue * t);
                     }
-                    else if (motionStyle == 4)
-                    {
-                        double radius = 50 + seconds * 240;
-                        ox = w * .5 + Math.Cos(g.Longitude) * radius;
-                        oy = h * .5 + Math.Sin(g.Longitude) * radius;
-                    }
-                    else if (motionStyle == 5)
-                    {
-                        ox = g.Longitude / (2 * Math.PI) * w;
-                        oy = h * .5 + Math.Sin(ox / 47 + seconds * 5) * (55 + Math.Abs(g.Latitude) * 100);
-                    }
-                    if (morph)
-                    {
-                        double scatter = Ease(seconds / .35);
-                        ox = g.Origin.X + (ox - g.Origin.X) * scatter;
-                        oy = g.Origin.Y + (oy - g.Origin.Y) * scatter;
-                    }
-                    double curl = Math.Sin(t * Math.PI) * 24;
-                    px = ox + (px - ox) * t + Math.Sin(angle) * curl;
-                    py = oy + (py - oy) * t + Math.Cos(angle) * curl;
-                    double light = .63 + .32 * Math.Cos(angle) * ring / g.Radius;
-                    red = (int)(29 * light * (1 - t) + red * t);
-                    green = (int)(235 * light * (1 - t) + green * t);
-                    blue = (int)(248 * light * (1 - t) + blue * t);
                 }
                 else if (Closing)
                 {
@@ -179,6 +215,7 @@ namespace OrbitCalendar
                     px += (w - 18 - px) * t + sweep * g.Speed;
                     py += (h + 2 - py) * t - sweep * g.Radius;
                 }
+                grains[index].Current = new Point(px, py);
                 if (px < 0 || py < 0 || px >= w - 1 || py >= h - 1) continue;
                 int ix = (int)px, iy = (int)py, i = iy * w + ix;
                 double fx = px - ix, fy = py - iy;
@@ -189,6 +226,17 @@ namespace OrbitCalendar
             }
             layer.WritePixels(new Int32Rect(0, 0, w, h), raster, w * 4, 0);
             InvalidateVisual();
+        }
+
+        public void RefreshArea(Rect area)
+        {
+            if (layer == null || !IsVisible || Busy || grains == null) return;
+            face.UpdateLayout();
+            var updated = new List<Grain>();
+            foreach (var grain in grains) if (!area.Contains(grain.Target)) updated.Add(grain);
+            updated.AddRange(Sample(area));
+            grains = updated.ToArray();
+            Paint();
         }
 
         public void Refresh()
