@@ -80,7 +80,6 @@ namespace OrbitCalendar
     }
     internal partial class CalendarPanel
     {
-        internal const double TimerGaugeWidth = 458 * .8;
         double lastTimerProgress = -1;
         bool lastTimerGauge;
         public void UpdateTimerProgress(double progress, bool running)
@@ -91,7 +90,8 @@ namespace OrbitCalendar
             Rect bounds = track.Visibility == Visibility.Visible ? PanelBounds(track) : Rect.Empty;
             lastTimerGauge = running; lastTimerProgress = progress;
             track.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-            Get<Border>("TimerProgress").Width = TimerGaugeWidth * Math.Max(0, Math.Min(1, progress));
+            UpdateLayout();
+            Get<Border>("TimerProgress").Width = track.ActualWidth * Math.Max(0, Math.Min(1, progress));
             if (mode != 0 || !IsVisible || IsClosing) return;
             if (running) bounds = PanelBounds(track);
             if (appearing) effect.StartArea(bounds, true);

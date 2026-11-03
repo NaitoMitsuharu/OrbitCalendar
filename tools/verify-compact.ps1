@@ -27,8 +27,22 @@ try{
  $globe=[Windows.Rect]::new(198,53,95,94);Assert (@($grains|Where-Object {$_.Moving -and $globe.Contains($_.Target)}).Count -eq 0) 'Unchanged globe scattered during day selection'
  Pump 1900;Snapshot 'calendar.png'
  $panel.Tick([DateTime]::Now,'22:30');$panel.UpdateTimerProgress(.25,$true);Pump 1900
- $bar=$root.FindName('TimerProgressTrack');Assert ([Math]::Abs($bar.Width/$root.Width-.8) -lt .001) 'Timer bar is not 80% of window width'
- $bb=$bar.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($bar.RenderSize));$time=$root.FindName('TimerDuration');$tb=$time.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($time.RenderSize));Assert (-not $bb.IntersectsWith($tb)) 'Wide timer bar overlaps time';Snapshot 'timer-progress.png';$panel.UpdateTimerProgress(0,$false);$panel.Tick([DateTime]::Now,'')
+ $bar=$root.FindName('TimerProgressTrack');$time=$root.FindName('TimerDuration');$focus=$root.FindName('FocusButton')
+ $fixed=$focus.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($focus.RenderSize))
+ foreach($label in @('05:00','99:59','180:00')){
+  $panel.Tick([DateTime]::Now,$label);$panel.UpdateTimerProgress(.75,$true);$panel.UpdateLayout()
+  $bb=$bar.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($bar.RenderSize));$tb=$time.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($time.RenderSize));$fb=$focus.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($focus.RenderSize))
+  Assert ([Math]::Abs(($bb.Top+$bb.Bottom)/2-($tb.Top+$tb.Bottom)/2) -le 1 -and [Math]::Abs(($bb.Top+$bb.Bottom)/2-($fb.Top+$fb.Bottom)/2) -le 1) 'Timer gauge and controls are not on the same row'
+  Assert ($bb.Width -ge 300 -and $bb.Left -lt 25 -and [Math]::Abs($tb.Left-$bb.Right-12) -le 1) 'Timer gauge does not fill the available row'
+  Assert (-not $bb.IntersectsWith($tb) -and $fb -eq $fixed) 'Timer gauge overlaps time or shifts the play/stop button'
+  Assert ([Math]::Abs($root.FindName('TimerProgress').Width-$bar.ActualWidth*.75) -lt .01) 'Responsive gauge progress incorrect'
+ }
+ Pump 1900;Snapshot 'timer-progress.png'
+ $panel.Collapse();Pump 900;$panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 1900
+ Assert ($bar.Visibility -eq 'Visible' -and $bar.ActualWidth -ge 300) 'Inline gauge lost after reopening'
+ $panel.UpdateTimerProgress(1,$true);Assert ([Math]::Abs($root.FindName('TimerProgress').Width-$bar.ActualWidth) -lt .01) 'Completed gauge exceeds track'
+ $panel.UpdateTimerProgress(0,$false);$panel.Tick([DateTime]::Now,'');$panel.UpdateLayout()
+ Assert ($focus.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($focus.RenderSize)) -eq $fixed) 'Stopping timer moved button'
  Click 'WeatherTab';WaitLoading
  $refresh=$root.FindName('RefreshData');$stamp=$root.FindName('DataStamp');$r=$refresh.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($refresh.RenderSize));$d=$stamp.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($stamp.RenderSize));Assert ($refresh.Parent.Name -eq 'DataStampRow' -and [Math]::Abs(($r.Top+$r.Bottom)/2-($d.Top+$d.Bottom)/2) -lt 2 -and $d.Right -le $r.Left) 'Refresh is not aligned with the stamp'
  $regions=$root.FindName('RegionChoices');$tools=$root.FindName('MapTools');$rb=$regions.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($regions.RenderSize));$mb=$tools.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($tools.RenderSize));Assert ($tools.Parent.Name -eq 'DataChoices' -and $rb.Right -lt $mb.Left -and $mb.Right -le 438) 'Combined weather controls overlap'
@@ -46,6 +60,6 @@ try{
  $rows=$root.FindName('MarketResults');$rowsBottom=$rows.Children[$rows.Children.Count-1].TransformToAncestor($root).TransformBounds([Windows.Rect]::new($rows.Children[$rows.Children.Count-1].RenderSize));$message=$root.FindName('MarketMessage').TransformToAncestor($root).TransformBounds([Windows.Rect]::new($root.FindName('MarketMessage').RenderSize));Assert ($rowsBottom.Bottom -le $message.Top+2) 'Market rows overlap page controls'
  Click 'CloseMarketPicker';Assert ($picker.Visibility -eq 'Collapsed' -and $transition.Closing) 'Market popup does not close with particles';Pump 850;Assert (-not $transition.IsVisible) 'Closing popup particles stuck'
  Click 'TransitTab';WaitLoading;Snapshot 'transit.png'
- Write-Output 'PASS: inline refresh, compact forecast/news/weather controls, 80% timer without overlaps, day-selection motion preserving globe, particle market settings/search/close with native editable input'
+ Write-Output 'PASS: inline refresh, compact forecast/news/weather controls, same-row timer filling available width without overlaps, day-selection motion preserving globe, particle market settings/search/close with native editable input'
  Write-Output $folder
 }finally{$panel.Hide();$panel.Close()}
