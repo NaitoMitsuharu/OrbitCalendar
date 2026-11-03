@@ -33,7 +33,7 @@ try{
  $mini.Update('11:11',.5);Assert ($mini.PreferredWidth -eq $small) 'Compact timer width changes between equal-length times'
  $mini.Update('180:00',.5);Assert ($mini.PreferredWidth -gt $small -and $mini.PreferredWidth -le 160) 'Long duration does not fit compact timer';$mini.Hide()
  Click 'WeatherTab';Assert ($root.FindName('LoadingArea').Visibility -eq 'Visible' -and -not $root.FindName('DataStamp').Text.Contains('取得中')) 'Radar loading indicator missing'
- $dots=$pt.GetField('mainLoadingDots',$if).GetValue($panel);$phase=$dots.Phase;Pump 180;Assert ($dots.Phase -ne $phase) 'Loading animation is not advancing';WaitLoading;Assert ($root.FindName('LoadingArea').Visibility -eq 'Collapsed') 'Radar loading indicator stuck'
+ $dots=$pt.GetField('mainLoadingParticles',$if).GetValue($panel);$phase=$dots.Phase;Pump 180;Assert ($dots.Phase -ne $phase) 'Loading animation is not advancing';WaitLoading;Assert ($root.FindName('LoadingArea').Visibility -eq 'Collapsed') 'Radar loading indicator stuck'
  # Old requests must never hide a newer request's indicator.
  $old=[Threading.CancellationTokenSource]::new();$new=[Threading.CancellationTokenSource]::new()
  $pt.GetMethod('BeginDataLoading',$if).Invoke($panel,@($old))|Out-Null;$pt.GetMethod('BeginDataLoading',$if).Invoke($panel,@($new))|Out-Null;$pt.GetMethod('EndDataLoading',$if).Invoke($panel,@($old))|Out-Null;Assert ($root.FindName('LoadingArea').Visibility -eq 'Visible') 'Stale request hid the current loader'

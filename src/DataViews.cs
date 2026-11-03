@@ -177,8 +177,8 @@ namespace OrbitCalendar
                 }
                 if (fetch)
                 {
-                    stamp.Text = market ? (view == null ? "データを取得中…" : view.Stamp + " · 更新中") : view == null ? "" : view.Stamp;
-                    if (!market) BeginDataLoading(request);
+                    stamp.Text = view == null ? "" : view.Stamp;
+                    BeginDataLoading(request);
                     refresh.IsEnabled = false;
                 }
                 UpdateLayout();

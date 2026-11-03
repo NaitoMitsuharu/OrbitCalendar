@@ -19,7 +19,7 @@ namespace OrbitCalendar
         }
         void RenderNewsArticle(bool stale)
         {
-            newsLoadingDots = null;
+            newsLoadingParticles = null;
             var body = Get<StackPanel>("InformationBody"); body.Children.Clear();
             if (information == null || information.Items.Length == 0) return;
             infoPage = Math.Max(0, Math.Min(infoPage, information.Items.Length - 1));
@@ -29,7 +29,7 @@ namespace OrbitCalendar
             content.Children.Add(new TextBlock { Text = item.Title, FontSize = 17, Foreground = Art.Ink("#E3F4F4"), TextWrapping = TextWrapping.Wrap, MaxHeight = 46, LineHeight = 23, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = item.Title, Tag = "news-title" });
             var photo = new Grid { Width = 394, Height = 142, Margin = new Thickness(0, 8, 0, 8), Background = Art.Ink("#152E39"), ClipToBounds = true };
             if (item.Picture != null) photo.Children.Add(new Image { Source = item.Picture, Stretch = Stretch.UniformToFill, Width = 394, Height = 142, Tag = "news-image" });
-            else if (!item.DetailsLoaded) { newsLoadingDots = new LoadingDots(); photo.Children.Add(newsLoadingDots); }
+            else if (!item.DetailsLoaded) { newsLoadingParticles = new ParticleLoading(3); photo.Children.Add(newsLoadingParticles); }
             else photo.Children.Add(new TextBlock { Text = "画像はありません", Foreground = Art.Ink("#92B5BE"), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
             content.Children.Add(photo);
             content.Children.Add(new TextBlock { Text = item.Description.Length > 0 ? item.Description : item.DetailsLoaded ? "説明文を取得できませんでした" : "", FontSize = 13, Foreground = Art.Ink("#C5DEE2"), TextWrapping = TextWrapping.Wrap, MaxHeight = 54, LineHeight = 18, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = item.Description, Tag = "news-description" });
