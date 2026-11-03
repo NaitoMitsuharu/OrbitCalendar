@@ -95,6 +95,7 @@
           <Slider Name="RadarTime" Width="252" Minimum="0" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Margin="8,0"/>
           <TextBlock Name="RadarClock" Foreground="#B3DBDF" VerticalAlignment="Center"/>
         </StackPanel>
+        <TextBlock Name="RadarRange" Foreground="#92B5BE" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Margin="0,2,0,1" Visibility="Collapsed"/>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
         <Border Name="PlaceConfirm" Grid.RowSpan="2" Width="400" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="#102835" Padding="7" BorderThickness="1" BorderBrush="#528793" CornerRadius="6" Margin="0,0,0,51" Visibility="Collapsed">
@@ -161,7 +162,7 @@
         <Grid Grid.Row="5"><TextBlock Name="MarketMessage" FontSize="11" Foreground="#8FE4DD" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Margin="0,0,122,0"/>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="MarketPrevious" Content="‹" Width="26" FontSize="18" AutomationProperties.Name="前の銘柄ページ"/><TextBlock Name="MarketPage" FontSize="11" MinWidth="46" TextAlignment="Center" VerticalAlignment="Center"/><Button Name="MarketNext" Content="›" Width="26" FontSize="18" AutomationProperties.Name="次の銘柄ページ"/></StackPanel>
         </Grid>
-        <TextBlock Name="MarketCatalogHint" Grid.Row="6" Foreground="#92B5BE" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" Text="名簿 2026/11/03 · SBI取扱は未照合です。価格取得未対応の投信も登録できます。愛称は公式情報＋主要な通称に対応。"/>
+        <TextBlock Name="MarketCatalogHint" Grid.Row="6" Foreground="#92B5BE" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" Text="名簿 2026/11/03 · SBI取扱は未照合です。取得先ありの投信も、SBIでの配信有無は「確認」で調べられます。"/>
       </Grid>
     </Border>
   </Grid>

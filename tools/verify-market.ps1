@@ -36,7 +36,7 @@ Assert (@(Search '7203.T' 2)[0].Code -eq '7203') 'Stock ticker search failed'
 Assert (@(Search 'USD/JPY' 3)[0].Id -eq 'y:JPY=X') 'FX alias failed'
 Assert (@(Search 'not a real fund あああ' 1).Count -eq 0) 'Unexpected unknown fund mapping'
 Assert (@(Search 'BRK-B' 3)[0].Id -eq 'custom:BRK-B') 'Manual ticker candidate failed'
-Assert (@(Search '89311199' 1)[0].Provider -eq '') 'Unsupported fund classified as supported'
+Assert (@(Search '89311199' 1)[0].Provider -eq 'sbi') 'SBI fund source not configured'
 $panel = [Activator]::CreateInstance($assembly.GetType('OrbitCalendar.CalendarPanel'), [object[]]@([Action]{},[Action]{}))
 $type = $panel.GetType(); $root = $panel.Content.Child
 function InvokePanel($name, $arguments = @()) { $type.GetMethod($name,$instance).Invoke($panel,[object[]]$arguments) }
@@ -91,12 +91,14 @@ try {
     ActionNamed '価格取得を確認 03311187'
     WaitUntil { $null -eq $type.GetField('checkingMarket',$instance).GetValue($panel) }
     Assert ($root.FindName('MarketMessage').Text.StartsWith('取得成功')) 'Second fund adapter failed'
-    $root.FindName('MarketQuery').Text='89311199'; Pump 300; Snapshot 'unsupported-fund.png'
-    ActionNamed '銘柄を追加 89311199'; Assert ($items.Count -eq 4) 'Unsupported fund add failed'
+    $root.FindName('MarketQuery').Text='89311199'; Pump 300; Snapshot 'sbi-fund-search.png'
+    ActionNamed '銘柄を追加 89311199'; Assert ($items.Count -eq 4) 'SBI fund add failed'
     Click 'CloseMarketPicker'
-    $root.FindName('MarketChoices').Children[3].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent)); Pump 1900
-    Assert ($root.FindName('DataStamp').Text.Contains('価格取得未対応') -and $root.FindName('Plot').Children.Count -eq 0 -and -not $root.FindName('RefreshData').IsEnabled) 'Unsupported fund reused stale chart'
-    Snapshot 'unsupported-chart.png'
+    $root.FindName('MarketChoices').Children[3].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+    WaitUntil { $null -eq $type.GetField('loading',$instance).GetValue($panel) }
+    Assert ($root.FindName('DataStamp').Text.Contains('基準価額') -and $root.FindName('Plot').Children.Count -gt 10 -and $root.FindName('RefreshData').IsEnabled) 'SBI NAV chart failed'
+    Assert ($root.FindName('DataSource').Content.Contains('SBI証券')) 'SBI source attribution missing'
+    Snapshot 'sbi-v-sp500.png'
     Click 'ManageMarkets'; Click 'SearchMarkets'; $root.FindName('MarketQuery').Text='存在しない投信あああ'; Pump 300
     Assert ($root.FindName('MarketResults').Children[0] -is [Windows.Controls.TextBlock]) 'Empty search not explained'
     Click 'RegisteredMarkets'
@@ -115,7 +117,7 @@ try {
     Assert ($root.FindName('MarketPicker').Visibility -eq 'Visible') 'Settings entry failed'
     Click 'BackParticles'; Pump 1900
     Assert ($root.FindName('SettingsPicker').Visibility -eq 'Visible') 'Return to particle settings failed'
-    Write-Output ('PASS: catalog aliases/codes, filters, defaults, live FX/stocks/two funds, add/dedup/order/remove, persistence, unsupported/empty views, settings navigation')
+    Write-Output ('PASS: catalog aliases/codes, filters, defaults, live FX/stocks/MUFG and SBI funds, add/dedup/order/remove, persistence, empty views, settings navigation')
     Write-Output $folder
 }
 finally { $panel.Hide(); $panel.Close() }

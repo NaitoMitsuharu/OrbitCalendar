@@ -13,8 +13,10 @@ namespace OrbitCalendar
     {
         public string Id, Name, Label, Kind, Code, Aliases, Provider, Key, Unit;
         internal string SearchText;
-        public bool Supported { get { return Provider == "yahoo" || Provider == "mufg"; } }
+        public bool Supported { get { return Provider == "yahoo" || Provider == "mufg" || Provider == "sbi"; } }
+        public string SourceName { get { return Provider == "mufg" ? "三菱UFJアセットマネジメント" : Provider == "sbi" ? "SBI証券 基準価額" : "Yahoo Finance"; } }
         public string SourceUrl { get { return Provider == "mufg" ? "https://www.am.mufg.jp/fund/" + Key + ".html" :
+            Provider == "sbi" ? "https://site0.sbisec.co.jp/marble/fund/history/standardprice.do?fund_sec_code=" + Uri.EscapeDataString(Code) :
             Provider == "yahoo" ? "https://finance.yahoo.com/quote/" + Uri.EscapeDataString(Key) + "/" :
             "https://www.imaj.or.jp/find/nisa_growth_productslist/index.html"; } }
     }
@@ -77,14 +79,16 @@ namespace OrbitCalendar
             public int Version { get; set; }
             public string[] Items { get; set; }
             public Dictionary<string, string> Confirmed { get; set; }
+            public Dictionary<string, string> Unavailable { get; set; }
         }
         public static readonly List<Instrument> Items = new List<Instrument>();
         static Dictionary<string, string> confirmed = new Dictionary<string, string>();
+        static Dictionary<string, string> unavailable = new Dictionary<string, string>();
         public static string SaveError;
         static Watchlist() { Reload(); }
         internal static void Reload()
         {
-            Items.Clear(); confirmed.Clear(); bool loaded = false;
+            Items.Clear(); confirmed.Clear(); unavailable.Clear(); bool loaded = false;
             try
             {
                 var state = new JavaScriptSerializer().Deserialize<State>(File.ReadAllText(path, Encoding.UTF8));
@@ -97,6 +101,7 @@ namespace OrbitCalendar
                         else if (id != null && Regex.IsMatch(id, "^custom:[A-Z][A-Z0-9.-]{0,5}$")) Items.Add(Instruments.Custom(id.Substring(7)));
                     }
                     if (state.Confirmed != null) confirmed = state.Confirmed;
+                    if (state.Unavailable != null) unavailable = state.Unavailable;
                     loaded = true;
                 }
             }
@@ -109,15 +114,18 @@ namespace OrbitCalendar
         public static string Status(Instrument item)
         {
             string day;
-            return !item.Supported ? "価格取得未対応" : confirmed.TryGetValue(item.Id, out day) ? "取得確認済 " + day : "価格取得対応・未確認";
+            return !item.Supported ? "価格取得未対応" : unavailable.TryGetValue(item.Id, out day) ? "配信未確認・再確認可 " + day :
+                confirmed.TryGetValue(item.Id, out day) ? "取得確認済 " + day : "取得先あり・未確認";
         }
-        public static void Confirm(Instrument item) { confirmed[item.Id] = DateTime.Now.ToString("MM/dd HH:mm"); Save(); }
+        public static void Confirm(Instrument item) { unavailable.Remove(item.Id); confirmed[item.Id] = DateTime.Now.ToString("MM/dd HH:mm"); Save(); }
+        public static bool HasNoData(Instrument item) { return unavailable.ContainsKey(item.Id); }
+        public static void NoData(Instrument item) { unavailable[item.Id] = DateTime.Now.ToString("MM/dd HH:mm"); Save(); }
         public static bool Save()
         {
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                var state = new State { Version = 1, Items = Items.Select(i => i.Id).ToArray(), Confirmed = confirmed };
+                var state = new State { Version = 1, Items = Items.Select(i => i.Id).ToArray(), Confirmed = confirmed, Unavailable = unavailable };
                 string temporary = path + ".tmp";
                 File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(state), new UTF8Encoding(false));
                 if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);

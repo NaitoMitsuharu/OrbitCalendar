@@ -65,7 +65,7 @@ namespace OrbitCalendar
                 CloseMarketSettings();
             };
             IsVisibleChanged += delegate { if (!IsVisible) CloseMarketSettings(); };
-            Get<TextBlock>("MarketCatalogHint").Text = "名簿 " + Instruments.Snapshot + " · SBI取扱は未照合です。価格取得未対応の投信も登録できます。愛称は公式情報＋主要な通称に対応。";
+            Get<TextBlock>("MarketCatalogHint").Text = "名簿 " + Instruments.Snapshot + " · SBI取扱は未照合です。取得先ありの投信も、SBIでの配信有無は「確認」で調べられます。";
             RebuildMarketChoices();
         }
 
@@ -126,7 +126,7 @@ namespace OrbitCalendar
                 var text = new StackPanel { Margin = new Thickness(5, 3, 3, 3) };
                 text.Children.Add(new TextBlock { Text = item.Name, FontSize = 13, Foreground = Art.Ink("#E3F4F4"), TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = item.Name + "\n" + item.Aliases });
                 text.Children.Add(new TextBlock { Text = item.Code + " · " + item.Kind, FontSize = 11, Foreground = muted, Margin = new Thickness(0, 2, 0, 1) });
-                text.Children.Add(new TextBlock { Text = Watchlist.Status(item), TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = Watchlist.Status(item), FontSize = 11, Foreground = Art.Ink(item.Supported ? "#8FE4DD" : "#E1BE89") });
+                text.Children.Add(new TextBlock { Text = Watchlist.Status(item), TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = Watchlist.Status(item), FontSize = 11, Foreground = Art.Ink(item.Supported && !Watchlist.HasNoData(item) ? "#8FE4DD" : "#E1BE89") });
                 grid.Children.Add(text);
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
                 Grid.SetColumn(actions, 1); grid.Children.Add(actions);
@@ -213,6 +213,10 @@ namespace OrbitCalendar
                 if (request.IsCancellationRequested) return;
                 Watchlist.Confirm(item); marketSaved[item.Id] = view;
                 DrawMarketSettings(); message.Text = Watchlist.SaveError ?? ("取得成功 · 最新データ " + view.Bars.Last().Day.ToString("yyyy/MM/dd"));
+            }
+            catch (FundDataUnavailableException ex)
+            {
+                if (!request.IsCancellationRequested) { Watchlist.NoData(item); DrawMarketSettings(); message.Text = ex.Message; }
             }
             catch (Exception) { if (!request.IsCancellationRequested) message.Text = "取得失敗 · 配信対象外または通信エラー。再確認できます"; }
             finally { if (checkingMarket == request) checkingMarket = null; request.Dispose(); }

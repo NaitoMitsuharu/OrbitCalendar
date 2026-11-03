@@ -52,7 +52,7 @@ def build(stocks, funds, mufg):
     for r in funds[2:]:
         code, name = r.get('C', ''), r.get('D', '')
         if re.fullmatch('[0-9A-Z]{8}', code) and name:
-            add(['f:'+code, name, name, '投資信託', code, r.get('E', ''), '', '', '円'])
+            add(['f:'+code, name, name, '投資信託', code, r.get('E', ''), 'sbi', code, '円'])
     for r in mufg:
         code = r.get('cfsd_association_fund_cd') or ''
         if not re.fullmatch('[0-9A-Z]{8}', code) or r.get('cfsd_redemption_flg') != 0:
@@ -79,6 +79,8 @@ def build(stocks, funds, mufg):
     for r in extras:
         add(r)
     for r in items.values():
+        if r[6] == 'sbi':
+            r[2] = r[1].replace('インデックス・ファンド', '').replace('インデックスファンド', '').replace('<購入・換金手数料なし>', '').strip()
         if r[4] == '0331418A': r[2] = 'オルカン'
         if r[4] == '03311187': r[2] = 'eMAXIS Slim S&P500'
         if r[4] == '7203': r[2] = 'トヨタ'; r[5] += ' トヨタ Toyota'

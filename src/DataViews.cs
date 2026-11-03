@@ -35,8 +35,10 @@ namespace OrbitCalendar
             radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
             radarPlayback.Tick += delegate
             {
+                if (radarFrames == null || radarFrames.Length < 2) { StopRadar(); return; }
                 var slider = Get<Slider>("RadarTime");
-                slider.Value = slider.Value >= slider.Maximum ? 0 : slider.Value + 1;
+                int index = RadarIndex(slider.Value);
+                slider.Value = RadarMinutes(radarFrames[(index + 1) % radarFrames.Length]);
             };
             Get<Button>("RadarPlay").Click += delegate
             {
@@ -47,7 +49,7 @@ namespace OrbitCalendar
             Get<Slider>("RadarTime").ValueChanged += delegate
             {
                 if (updatingTimeline || radarFrames == null || mode != 2) return;
-                ShowRadarFrame((int)Get<Slider>("RadarTime").Value);
+                ShowRadarFrame(RadarIndex(Get<Slider>("RadarTime").Value));
             };
             IsVisibleChanged += delegate { if (!IsVisible) StopRadar(); };
 
@@ -60,7 +62,7 @@ namespace OrbitCalendar
             Get<Button>("RefreshData").Click += delegate { LoadView(true); };
             Get<Button>("DataSource").Click += delegate
             {
-                string url = mode == 1 && SelectedMarket != null ? SelectedMarket.SourceUrl : "https://www.jma.go.jp/bosai/nowc/";
+                string url = mode == 1 && SelectedMarket != null ? SelectedMarket.SourceUrl : (activeWeather != null && activeWeather.HourlyRain ? "https://www.jma.go.jp/bosai/kaikotan/" : "https://www.jma.go.jp/bosai/nowc/");
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             };
             IsVisibleChanged += delegate { if (!IsVisible && loading != null) loading.Cancel(); };
@@ -106,6 +108,7 @@ namespace OrbitCalendar
             Get<Button>("AutoPlace").Visibility = SavedPlace.Coordinate == null ? Visibility.Collapsed : Visibility.Visible;
             Get<Canvas>("Plot").Height = market ? 220 : LiveData.MapHeight + 6;
             Get<StackPanel>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<TextBlock>("RadarRange").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             var names = LiveData.Regions;
             var stamp = Get<TextBlock>("DataStamp");
             var refresh = Get<Button>("RefreshData");
@@ -120,7 +123,7 @@ namespace OrbitCalendar
                 }
                 Get<TextBlock>("SectionLabel").Text = market ? "MARKET   /   3 MONTHS" : "WEATHER   /   PRECIPITATION";
                 Get<Button>("DataSource").IsEnabled = !market || instrument != null;
-                Get<Button>("DataSource").Content = market ? (instrument != null && instrument.Provider == "mufg" ? "三菱UFJアセットマネジメント  ↗" : instrument != null && instrument.Supported ? "Yahoo Finance  ↗" : "投資信託の名簿（価格取得未対応） ↗") : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
+                Get<Button>("DataSource").Content = market ? (instrument != null && instrument.Supported ? instrument.SourceName + "  ↗" : "投資信託の名簿（価格取得未対応） ↗") : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
                 LiveData.View view;
                 if (market && (instrument == null || !instrument.Supported))
                 {
@@ -163,6 +166,14 @@ namespace OrbitCalendar
                     effect.Start(true);
                 }
                 nextUpdate = view.Fetched.AddMinutes(5);
+            }
+            catch (FundDataUnavailableException ex)
+            {
+                if (request.IsCancellationRequested) return;
+                Watchlist.NoData(instrument);
+                LiveData.View previous;
+                stamp.Text = marketSaved.TryGetValue(instrument.Id, out previous) ? previous.Stamp + " · " + ex.Message : ex.Message;
+                nextUpdate = DateTime.UtcNow.AddMinutes(5);
             }
             catch (Exception)
             {
@@ -236,8 +247,7 @@ namespace OrbitCalendar
             var plot = Get<Canvas>("Plot");
             plot.Children.Clear();
             DrawRadar(frame);
-            Get<TextBlock>("DataStamp").Text = frame.Stamp;
-            Get<TextBlock>("RadarClock").Text = frame.Stamp.Substring(11, 5) + (frame.Forecast ? " 予測" : " 観測");
+            UpdateRadarCaption(frame);
             effect.Refresh();
         }
 
@@ -250,15 +260,7 @@ namespace OrbitCalendar
             plot.Children.Clear();
             if (view.Map != null)
             {
-                radarFrames = view.Frames ?? new[] { view };
-                Get<Button>("RadarPlay").IsEnabled = radarFrames.Length > 1;
-                Get<Slider>("RadarTime").IsEnabled = radarFrames.Length > 1;
-                updatingTimeline = true;
-                Get<Slider>("RadarTime").Maximum = radarFrames.Length - 1;
-                Get<Slider>("RadarTime").Value = Array.IndexOf(radarFrames, view);
-                updatingTimeline = false;
-                DrawRadar(view);
-                Get<TextBlock>("RadarClock").Text = view.Stamp.Substring(11, 5) + (view.Forecast ? " 予測" : " 観測");
+                SetRadarTimeline(view);
                 return;
             }
             var bars = view.Bars;
