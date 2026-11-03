@@ -12,7 +12,7 @@ namespace OrbitCalendar
 {
     internal partial class CalendarPanel
     {
-        readonly int[] choice = new int[3];
+        readonly int[] choice = new int[5];
         readonly Dictionary<int, LiveData.View> saved = new Dictionary<int, LiveData.View>();
         int mode;
         LiveData.View[] radarFrames;
@@ -26,13 +26,13 @@ namespace OrbitCalendar
 
         void InitializeViews()
         {
-            tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab") };
+            tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab"), Get<Button>("NewsTab"), Get<Button>("TransitTab") };
             choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3"), Get<Button>("Choice4") };
             tabs[0].Background = activeTab;
             InitializeMapInteraction();
             InitializePlacePicker();
             InitializeMarketSettings();
-            radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
+            radarPlayback.Interval = TimeSpan.FromMilliseconds(33);
             radarPlayback.Tick += delegate { AdvanceRadarPlayback(); };
             Get<Button>("RadarPlay").Click += delegate
             {
@@ -42,15 +42,16 @@ namespace OrbitCalendar
                 {
                     var slider = Get<Slider>("RadarTime");
                     if (RadarIndex(slider.Value) == radarFrames.Length - 1) slider.Value = RadarMinutes(radarFrames[0]);
-                    radarPlayback.Start(); Get<Button>("RadarPlay").Content = "■"; effect.Refresh();
+                    StartRadarPlayback(); Get<Button>("RadarPlay").Content = "■"; effect.Refresh();
                 }
             };
             Get<Slider>("RadarTime").PreviewMouseLeftButtonDown += delegate { StopRadar(); effect.Refresh(); };
             InitializeRainLegend();
+            InitializeWeatherModes();
             Get<Slider>("RadarTime").ValueChanged += delegate
             {
                 if (updatingTimeline || radarFrames == null || mode != 2) return;
-                ShowRadarFrame(RadarIndex(Get<Slider>("RadarTime").Value));
+                SeekRadar(Get<Slider>("RadarTime").Value);
             };
             IsVisibleChanged += delegate { if (!IsVisible) StopRadar(); };
 
@@ -58,11 +59,13 @@ namespace OrbitCalendar
             {
                 int value = i;
                 if (i < tabs.Length) tabs[i].Click += delegate { if (mode != value) { mapViewport = null; SwitchView(value); } };
-                choices[i].Click += delegate { if (choice[mode] != value || mode == 2) { choice[mode] = value; mapViewport = null; if (mode == 2) saved.Remove(mode * 10 + value); SwitchView(mode); } };
+                choices[i].Click += delegate { if (mode >= 3) { choice[mode] = value; infoPage = 0; LoadView(false); return; } if (choice[mode] != value || mode == 2) { choice[mode] = value; mapViewport = null; if (mode == 2) saved.Remove(mode * 10 + value); SwitchView(mode); } };
             }
             Get<Button>("RefreshData").Click += delegate { LoadView(true); };
             Get<Button>("DataSource").Click += delegate
             {
+                if (mode >= 3) { OpenLink(mode == 3 ? InformationFeeds.NewsUrl(choice[3]) : "https://www.sotetsu.co.jp/train/status/"); return; }
+                if (mode == 2 && showDailyWeather) { OpenLink("https://open-meteo.com/"); return; }
                 string url = mode == 1 && SelectedMarket != null ? SelectedMarket.SourceUrl : (activeWeather != null && activeWeather.HourlyRain ? "https://www.jma.go.jp/bosai/kaikotan/" : "https://www.jma.go.jp/bosai/nowc/");
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             };
@@ -81,6 +84,8 @@ namespace OrbitCalendar
             StopRadar();
             if (loading != null) loading.Cancel();
             mode = value;
+            root.Height = PreferredHeight;
+            if (IsVisible) Shell.Position(this, 458, PreferredHeight);
             for (int i = 0; i < tabs.Length; i++) tabs[i].Background = i == mode ? activeTab : Brushes.Transparent;
             Get<Grid>("CalendarBody").Visibility = mode == 0 ? Visibility.Visible : Visibility.Collapsed;
             Get<StackPanel>("DataBody").Visibility = mode == 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -88,10 +93,15 @@ namespace OrbitCalendar
             else LoadView(false);
         }
 
+        public double PreferredHeight { get { return mode == 2 ? 642 : 542; } }
+
         async void LoadView(bool force)
         {
             if (mode == 0 || !IsVisible) return;
+            if (mode >= 3) { await LoadInformation(force); return; }
+            if (mode == 2 && showDailyWeather) { await LoadDailyWeather(force); return; }
             if (loading != null) loading.Cancel();
+            PrepareStandardView();
             var request = new CancellationTokenSource();
             loading = request;
             int index = choice[mode], key = mode * 10 + index;
@@ -139,6 +149,7 @@ namespace OrbitCalendar
                 }
                 if (market) marketSaved.TryGetValue(instrument.Id, out view); else saved.TryGetValue(key, out view);
                 bool fetch = force || requestedViewport != null || view == null || DateTime.UtcNow - view.Fetched >= TimeSpan.FromMinutes(5);
+                if (!market && weatherForecast == null) weatherForecast = LiveData.CachedForecast;
                 if (view != null && requestedViewport == null) ShowData(view);
                 else if (requestedViewport != null && previousWeather != null) ShowData(previousWeather);
                 else
@@ -164,6 +175,7 @@ namespace OrbitCalendar
                     if (request.IsCancellationRequested) return;
                     if (market) { marketSaved[instrument.Id] = view; Watchlist.Confirm(instrument); }
                     else if (requestedViewport == null) saved[key] = view;
+                    if (!market) { weatherForecast = await TryForecast(request.Token, force); if (request.IsCancellationRequested) return; }
                     ShowData(view);
                     UpdateLayout();
                     effect.Start(true);
@@ -218,6 +230,7 @@ namespace OrbitCalendar
         void StopRadar()
         {
             radarPlayback.Stop();
+            radarWatch.Stop();
             Get<Button>("RadarPlay").Content = "▶";
         }
 

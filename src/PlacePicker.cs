@@ -60,6 +60,8 @@ namespace OrbitCalendar
             CancelPlaceSelection();
             for (int i = 20; i <= 23; i++) saved.Remove(i);
             activeWeather = null;
+            weatherForecast = null;
+            LiveData.CachedForecast = null;
             mapViewport = null;
             choice[2] = 0;
             nextTodayWeather = DateTime.MinValue;

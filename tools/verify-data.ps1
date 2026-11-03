@@ -9,6 +9,7 @@ $folder=Join-Path $env:TEMP ('orbit-data-qa-'+[guid]::NewGuid());New-Item -ItemT
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'))
 $watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
 $catalog=$a.GetType('OrbitCalendar.Instruments').GetField('ById',$sf).GetValue($null)
+$a.GetType('OrbitCalendar.SavedPlace').GetProperty('Coordinate',$sf).SetValue($null,[Device.Location.GeoCoordinate]::new(35.681236,139.767125),$null) # Public fixture, in-memory only
 $data=$a.GetType('OrbitCalendar.LiveData');$fund=$a.GetType('OrbitCalendar.FundPrices')
 function Assert($condition,$message){if(-not $condition){throw $message}}
 function Pump([int]$ms){$frame=[Windows.Threading.DispatcherFrame]::new();$timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[TimeSpan]::FromMilliseconds($ms);$timer.Add_Tick({$timer.Stop();$frame.Continue=$false}.GetNewClosure());$timer.Start();[Windows.Threading.Dispatcher]::PushFrame($frame)}
@@ -83,13 +84,13 @@ $weather=Await ($data.GetMethod('Weather',$sf).Invoke($null,[object[]]@(1,[Threa
 Write-Host 'Loaded frames:' (($weather.Frames|ForEach-Object {$_.ValidUtc.ToString('HH:mm')+':'+$_.HourlyRain}) -join ', ')
 foreach($frame in $weather.Frames){if($frame.Forecast){Assert ($frame.ValidUtc -gt $weather.OriginUtc) 'Forecast before acquisition time'}}
 $frames=$weather.Frames;$maxMinutes=($frames[-1].ValidUtc-$weather.OriginUtc).TotalMinutes
-Assert (-not $frames[0].Forecast -and $weather -eq $frames[0] -and $frames[-1].HourlyRain -and $maxMinutes -ge 150 -and $maxMinutes -le 210) 'Live three-hour forecast unavailable'
+Assert (-not $frames[0].Forecast -and $weather -eq $frames[0] -and -not $frames[-1].HourlyRain -and $maxMinutes -gt 0 -and $maxMinutes -le 60) 'Live one-hour forecast unavailable'
 Write-Host 'Live rainfall timeline (minutes from acquisition):' (($frames|ForEach-Object{[Math]::Max(0,[int]($_.ValidUtc-$weather.OriginUtc).TotalMinutes)}) -join ', ')
 $panel=[Activator]::CreateInstance($a.GetType('OrbitCalendar.CalendarPanel'),[object[]]@([Action]{},[Action]{}));$pt=$panel.GetType();$root=$panel.Content.Child
-function Snapshot($name){$im=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,542,96,96,[Windows.Media.PixelFormats]::Pbgra32);$im.Render($root);$e=[Windows.Media.Imaging.PngBitmapEncoder]::new();$e.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($im));$s=[IO.File]::Create((Join-Path $folder $name));try{$e.Save($s)}finally{$s.Dispose()}}
+function Snapshot($name){$im=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,[int]$root.Height,96,96,[Windows.Media.PixelFormats]::Pbgra32);$im.Render($root);$e=[Windows.Media.Imaging.PngBitmapEncoder]::new();$e.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($im));$s=[IO.File]::Create((Join-Path $folder $name));try{$e.Save($s)}finally{$s.Dispose()}}
 try {
     $panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 1800
-    $pt.GetField('mode',$if).SetValue($panel,2);$root.FindName('CalendarBody').Visibility='Collapsed';$root.FindName('DataBody').Visibility='Visible'
+    $root.Height=642;$panel.Height=642;$pt.GetField('mode',$if).SetValue($panel,2);$root.FindName('CalendarBody').Visibility='Collapsed';$root.FindName('DataBody').Visibility='Visible'
     foreach($name in @('MapTools','RadarControls')){$root.FindName($name).Visibility='Visible'}
     foreach($name in @('MapHint','RadarRange')){$root.FindName($name).Visibility='Visible'}
     $root.FindName('Plot').Height=196;$root.FindName('SectionLabel').Text='WEATHER   /   PRECIPITATION'
@@ -98,8 +99,8 @@ try {
     $pt.GetMethod('ShowData',$if).Invoke($panel,@($weather))|Out-Null;$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Start($true);Pump 1900
     $slider=$root.FindName('RadarTime');Assert ($slider.Value -eq 0 -and $slider.Maximum -eq $maxMinutes -and $slider.Ticks.Count -eq $frames.Length) 'Slider is not proportional to actual forecast times'
     Snapshot 'weather-now.png';$slider.Value=$slider.Maximum;Pump 300
-    Assert ($root.FindName('RainLegendUnit').Text -eq '(mm)' -and $root.FindName('RadarClock').Text -match '^\d{2}:\d{2}$' -and $root.FindName('DataSource').Content.Contains('今後の雨')) 'Long-range legend units or clock incorrect'
-    Snapshot 'weather-three-hours.png'
+    Assert ($root.FindName('RainLegendUnit').Text -eq '(mm/h)' -and $root.FindName('RadarClock').Text -match '^\d{2}:\d{2}$' -and $root.FindName('DataSource').Content.Contains('雨雲の動き')) 'Rain legend units or clock incorrect'
+    Snapshot 'weather-one-hour.png'
     $pt.GetMethod('ShowData',$if).Invoke($panel,@($frames[-1]))|Out-Null
     Assert ($slider.Ticks.Count -eq $frames.Length -and $slider.Value -eq $slider.Maximum) 'Selecting a future frame loses the rest of the timeline'
     $nowLabels=@($root.FindName('Plot').Children|Where-Object {$_.Tag -like 'city:*'}|ForEach-Object Tag)
@@ -109,7 +110,8 @@ try {
     $button=$root.FindName('RadarPlay');$button.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Pump 800
     Assert ($slider.Value -gt 0) 'Playback did not advance'
     $playback=$pt.GetField('radarPlayback',$if).GetValue($panel)
-    for($step=0;$step -lt $frames.Length;$step++){$pt.GetMethod('AdvanceRadarPlayback',$if).Invoke($panel,@())|Out-Null}
+    $pt.GetMethod('StopRadar',$if).Invoke($panel,@())|Out-Null
+    $slider.Value=$slider.Maximum-.01;$button.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Pump 500
     Assert (-not $playback.IsEnabled -and $slider.Value -eq $slider.Maximum -and $button.Content -eq '▶') 'Playback did not stop at the final frame'
     Pump 850
     Assert ($slider.Value -eq $slider.Maximum) 'Playback looped after the last frame'
@@ -119,10 +121,10 @@ try {
     Assert $slider.IsMoveToPointEnabled 'Track clicks still move by a fixed increment'
     Assert (@($root.FindName('RainLegendBar').Children|Where-Object {$_ -is [Windows.Shapes.Rectangle]}).Count -eq 8) 'Rain scale does not have eight color bins'
     Assert (-not $root.FindName('RadarRange').Text.Contains('+')) 'Relative offsets remain in the range'
-    $slider.Value=$slider.Maximum;Pump 200;Snapshot 'weather-three-hours.png'
+    $slider.Value=$slider.Maximum;Pump 200;Snapshot 'weather-one-hour.png'
 
     $sourceBounds=$root.FindName('DataSource').TransformToAncestor($root).TransformBounds([Windows.Rect]::new($root.FindName('DataSource').RenderSize))
-    Assert ($sourceBounds.Bottom -lt 542) 'Forecast UI extends outside window'
+    Assert ($sourceBounds.Bottom -lt $root.Height) 'Forecast UI extends outside window'
     Write-Output 'PASS: NAV parsing/status, odd-zoom alignment, future-only timeline, actual-time slider, units, playback and cities (live NAV tests run unless skipped)'
     Write-Output $folder
 } finally {$panel.Hide();$panel.Close()}

@@ -9,19 +9,48 @@ namespace OrbitCalendar
     internal partial class CalendarPanel
     {
         DateTime radarOrigin;
+        readonly System.Diagnostics.Stopwatch radarWatch = new System.Diagnostics.Stopwatch();
+        double radarStartMinute;
+        int drawnRadarIndex = -1;
+        bool radarPaintQueued;
         double RadarMinutes(LiveData.View frame) { return Math.Max(0, (frame.ValidUtc - radarOrigin).TotalMinutes); }
         int RadarIndex(double minutes)
         {
             if (radarFrames == null || radarFrames.Length == 0) return 0;
-            return Enumerable.Range(0, radarFrames.Length).OrderBy(i => Math.Abs(RadarMinutes(radarFrames[i]) - minutes)).First();
+            int index = 0;
+            for (int i = 1; i < radarFrames.Length; i++) if (RadarMinutes(radarFrames[i]) <= minutes + .00001) index = i;
+            return index;
+        }
+        void StartRadarPlayback()
+        {
+            radarStartMinute = Get<Slider>("RadarTime").Value;
+            radarWatch.Restart(); radarPlayback.Start();
         }
         void AdvanceRadarPlayback()
         {
             if (radarFrames == null || radarFrames.Length < 2) { StopRadar(); return; }
             var slider = Get<Slider>("RadarTime");
-            int index = RadarIndex(slider.Value);
-            if (index < radarFrames.Length - 1) slider.Value = RadarMinutes(radarFrames[index + 1]);
-            if (index >= radarFrames.Length - 2) { StopRadar(); effect.Refresh(); }
+            slider.Value = Math.Min(slider.Maximum, radarStartMinute + radarWatch.Elapsed.TotalSeconds * slider.Maximum / 15);
+            if (slider.Value >= slider.Maximum) { StopRadar(); effect.Refresh(); }
+        }
+        void SeekRadar(double minute)
+        {
+            int index = RadarIndex(minute);
+            if (index != drawnRadarIndex) { ShowRadarFrame(index); drawnRadarIndex = index; }
+            UpdateTemperature(minute);
+            Get<TextBlock>("RadarClock").Text = radarOrigin.AddMinutes(minute).AddHours(9).ToString("HH:mm");
+            // Track arranges its thumb after ValueChanged. Capture after that
+            // layout pass, coalescing drag/playback updates into one refresh.
+            if (radarPaintQueued) return;
+            radarPaintQueued = true;
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                radarPaintQueued = false;
+                if (!IsVisible || mode != 2 || showDailyWeather || IsClosing) return;
+                var area = PanelBounds(Get<Canvas>("TemperaturePlot"));
+                area.Union(PanelBounds(Get<StackPanel>("RadarControls")));
+                effect.RefreshArea(area);
+            }), System.Windows.Threading.DispatcherPriority.Render);
         }
         void UpdateRadarCaption(LiveData.View frame)
         {
@@ -49,11 +78,13 @@ namespace OrbitCalendar
             slider.Value = RadarMinutes(view);
             updatingTimeline = false;
             double age = Math.Max(0, (radarOrigin - radarFrames[0].ValidUtc).TotalMinutes);
-            string range = radarFrames[0].ValidUtc.AddHours(9).ToString("HH:mm") + " → " + radarFrames.Last().ValidUtc.AddHours(9).ToString("HH:mm");
-            Get<TextBlock>("RadarRange").Text = range + (age > 15 ? " · 観測" + (int)age + "分前" : "") + (radarFrames.Any(f => f.HourlyRain) ? " · 予測間隔：5分 / 約1時間" :
-                radarFrames.Length > 1 ? " · 取得できた予測範囲" : " · 予測を取得できませんでした");
+            string range = radarOrigin.AddHours(9).ToString("HH:mm") + " → " + radarFrames.Last().ValidUtc.AddHours(9).ToString("HH:mm");
+            Get<TextBlock>("RadarRange").Text = range + (age > 15 ? " · 観測" + (int)age + "分前" : "") + (radarFrames.Length > 1 ? " · 雨雲5分間隔 / 最大1時間先" : " · 予測を取得できませんでした");
             DrawRadar(view);
+            drawnRadarIndex = Array.IndexOf(radarFrames, view);
             UpdateRadarCaption(view);
+            DrawTemperatureGraph();
+            Get<TextBlock>("RadarClock").Text = radarOrigin.AddMinutes(slider.Value).AddHours(9).ToString("HH:mm");
         }
     }
 }

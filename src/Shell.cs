@@ -78,7 +78,7 @@ namespace OrbitCalendar
         {
             panel.Dispatcher.BeginInvoke(new Action(delegate
             {
-                if (panel.IsVisible) Position(panel, 458, 542);
+                if (panel.IsVisible) Position(panel, 458, panel.PreferredHeight);
             }));
         }
 

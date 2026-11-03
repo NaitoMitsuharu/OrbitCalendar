@@ -25,9 +25,6 @@ namespace OrbitCalendar
             try { nowcast = await Json<RadarTime[]>("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N2.json", token).ConfigureAwait(false); }
             catch (System.Net.Http.HttpRequestException) { }
             catch (TaskCanceledException) { token.ThrowIfCancellationRequested(); }
-            try { shortRange = await Json<RadarTime[]>("https://www.jma.go.jp/bosai/jmatile/data/rasrf/targetTimes.json", token).ConfigureAwait(false); }
-            catch (System.Net.Http.HttpRequestException) { }
-            catch (TaskCanceledException) { token.ThrowIfCancellationRequested(); }
             return SelectFutureRainTimes(observed, nowcast, shortRange);
         }
 
@@ -41,22 +38,6 @@ namespace OrbitCalendar
             {
                 time.Product = "nowc"; result.Add(time);
             }
-            // Public short-range tiles advance in roughly one-hour steps. Use real
-            // available times, ending closest to +3h (within about half an hour).
-            var far = shortRange.Where(t => t.elements != null && t.elements.Contains("rasrf") && t.basetime != t.validtime &&
-                RainUtc(t.validtime) > origin.AddHours(1) && RainUtc(t.validtime) <= origin.AddHours(3.5))
-                .GroupBy(t => t.validtime).Select(g => g.OrderByDescending(t => t.basetime, StringComparer.Ordinal).First()).ToArray();
-            // Keep one issuance across the long-range animation, rather than
-            // alternating older and newer forecasts for neighbouring times.
-            string latestBase = far.Select(t => t.basetime).OrderByDescending(t => t, StringComparer.Ordinal).FirstOrDefault();
-            far = far.Where(t => t.basetime == latestBase).ToArray();
-            var endpoint = far.OrderBy(t => Math.Abs((RainUtc(t.validtime) - origin.AddHours(3)).TotalMinutes))
-                .ThenBy(t => t.validtime, StringComparer.Ordinal).FirstOrDefault();
-            if (endpoint != null)
-                foreach (var time in far.Where(t => String.CompareOrdinal(t.validtime, endpoint.validtime) <= 0))
-                {
-                    time.Product = "rasrf"; result.Add(time);
-                }
             foreach (var time in result) time.OriginUtc = origin;
             return result.OrderBy(t => t.validtime, StringComparer.Ordinal).ToArray();
         }
