@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Device.Location;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -19,7 +20,7 @@ namespace OrbitCalendar
         static LiveData()
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 OrbitCalendar/1.2");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 OrbitCalendar/1.3");
         }
 
         public class Prices
@@ -55,9 +56,9 @@ namespace OrbitCalendar
 
         public static readonly string[] MarketNames = { "日経平均", "トヨタ", "ソニー" };
         public static readonly string[] Symbols = { "^N225", "7203.T", "6758.T" };
-        public static readonly string[] Regions = { "日本広域", "関東", "関西" };
+        public static readonly string[] Regions = { "現在地", "日本広域", "関東", "関西" };
 
-        static async Task<byte[]> Get(string url, CancellationToken token, bool missingAllowed = false)
+        internal static async Task<byte[]> Get(string url, CancellationToken token, bool missingAllowed = false)
         {
             using (var response = await http.GetAsync(url, token).ConfigureAwait(false))
             {
@@ -123,14 +124,66 @@ namespace OrbitCalendar
 
         public static async Task<View> Weather(int region, CancellationToken token)
         {
-            const int width = 414, height = 250;
+            var here = region == 0 ? await CurrentPosition(token) : null;
+            token.ThrowIfCancellationRequested();
+            return await WeatherAt(region, here, token).ConfigureAwait(false);
+        }
+
+        static async Task<GeoCoordinate> CurrentPosition(CancellationToken token)
+        {
+            try
+            {
+                using (var watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.Default))
+                {
+                    var result = new TaskCompletionSource<GeoCoordinate>();
+                    Action<GeoPosition<GeoCoordinate>> accept = delegate(GeoPosition<GeoCoordinate> fix)
+                    {
+                        if (!fix.Location.IsUnknown && fix.Timestamp >= DateTimeOffset.UtcNow.AddMinutes(-30))
+                            result.TrySetResult(fix.Location);
+                    };
+                    watcher.PositionChanged += delegate(object sender, GeoPositionChangedEventArgs<GeoCoordinate> e) { accept(e.Position); };
+                    watcher.StatusChanged += delegate(object sender, GeoPositionStatusChangedEventArgs e)
+                    {
+                        if (e.Status == GeoPositionStatus.Disabled) result.TrySetResult(null);
+                    };
+                    watcher.Start(false);
+                    accept(watcher.Position);
+                    if (watcher.Permission == GeoPositionPermission.Denied) return null;
+                    var timeout = Task.Delay(TimeSpan.FromSeconds(6), token);
+                    await Task.WhenAny(result.Task, timeout);
+                    token.ThrowIfCancellationRequested();
+                    return result.Task.IsCompleted ? result.Task.Result : null;
+                }
+            }
+            catch (UnauthorizedAccessException) { return null; }
+            catch (System.Runtime.InteropServices.COMException) { return null; }
+            catch (System.Security.SecurityException) { return null; }
+            catch (InvalidOperationException) { return null; }
+        }
+
+        static async Task<View> WeatherAt(int region, GeoCoordinate here, CancellationToken token)
+        {
             var times = await Json<RadarTime[]>("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json", token).ConfigureAwait(false);
             var time = times.Where(v => v.elements != null && v.elements.Contains("hrpns") && v.validtime == v.basetime)
                             .OrderByDescending(v => v.validtime, StringComparer.Ordinal).First();
-            int z = region == 0 ? 4 : 7;
-            double scale = region == 0 ? .76 : .88;
-            double lon = new[] { 136.6, 139.7, 135.5 }[region];
-            double lat = new[] { 35.7, 35.7, 34.8 }[region] * Math.PI / 180;
+            if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
+                here.Longitude >= 120 && here.Longitude <= 155)
+            {
+                var local = await RadarMap(time, "現在地周辺", here.Latitude, here.Longitude, 9, token).ConfigureAwait(false);
+                if (local != null) return local;
+            }
+            int preset = Math.Max(1, region) - 1;
+            var map = await RadarMap(time, Regions[preset + 1], new[] { 35.7, 35.7, 34.8 }[preset],
+                new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token).ConfigureAwait(false);
+            if (map == null) throw new InvalidDataException();
+            return map;
+        }
+
+        static async Task<View> RadarMap(RadarTime time, string name, double latitude, double lon, int z, CancellationToken token)
+        {
+            const int width = 414, height = 250;
+            double scale = z == 4 ? .76 : .88;
+            double lat = latitude * Math.PI / 180;
             int world = 256 << z;
             double left = world * (lon + 180) / 360 - width / (2 * scale);
             double top = world * (1 - Math.Log(Math.Tan(lat) + 1 / Math.Cos(lat)) / Math.PI) / 2 - height / (2 * scale);
@@ -139,7 +192,7 @@ namespace OrbitCalendar
                 for (int x = (int)left / 256; x <= (int)(left + (width - 1) / scale) / 256; x++)
                     requests.Add(ReadTile(z, x, y, time, token));
             var tiles = (await Task.WhenAll(requests).ConfigureAwait(false)).ToDictionary(t => t.Y * 1024 + t.X);
-            if (!tiles.Values.Any(t => t.Rain != null) || !tiles.Values.Any(t => t.Base != null)) throw new InvalidDataException();
+            if (!tiles.Values.Any(t => t.Rain != null) || !tiles.Values.Any(t => t.Base != null)) return null;
             var pixels = new byte[width * height * 4];
             for (int y = 0; y < height; y++)
                 for (int x = 0; x < width; x++)
@@ -161,7 +214,7 @@ namespace OrbitCalendar
             var map = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
             map.Freeze();
             var stamp = DateTime.ParseExact(time.validtime, "yyyyMMddHHmmss", CultureInfo.InvariantCulture).AddHours(9);
-            return new View { Map = map, Heading = Regions[region] + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") + " 観測（日本時間）",
+            return new View { Map = map, Heading = name + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") + " 観測（日本時間）",
                 Caption = "降水強度    青：弱い雨   黄～赤：強い雨   紫：猛烈な雨" };
         }
     }

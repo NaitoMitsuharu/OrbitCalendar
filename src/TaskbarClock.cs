@@ -33,6 +33,7 @@ namespace OrbitCalendar
             AccessibleRole = Forms.AccessibleRole.PushButton;
             ContextMenuStrip = menu;
             Cursor = Forms.Cursors.Hand;
+            SetStyle(Forms.ControlStyles.StandardDoubleClick, false);
             MouseClick += delegate(object sender, Forms.MouseEventArgs e) { if (e.Button == Forms.MouseButtons.Left) toggle(); };
         }
 

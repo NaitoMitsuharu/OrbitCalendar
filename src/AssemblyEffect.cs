@@ -22,14 +22,17 @@ namespace OrbitCalendar
         Grain[] grains;
         WriteableBitmap layer;
         int[] raster;
-        Point pointer;
-        double seconds, pointerTime;
+        readonly UIElement surface;
+        Action onDismissed;
+        public bool Closing { get { return onDismissed != null; } }
+        double seconds;
         bool assembling, morph, rendering, dirty;
         const double Gather = .85;
 
-        public AssemblyEffect(UIElement face)
+        public AssemblyEffect(UIElement face, UIElement surface)
         {
             this.face = face;
+            this.surface = surface;
         }
 
         Grain[] Sample()
@@ -135,17 +138,12 @@ namespace OrbitCalendar
                     green = (int)(235 * light * (1 - t) + green * t);
                     blue = (int)(248 * light * (1 - t) + blue * t);
                 }
-                else if (pointerTime > 0)
+                else if (Closing)
                 {
-                    var delta = g.Target - pointer;
-                    double d = delta.LengthSquared;
-                    if (d > .01 && d < 32 * 32)
-                    {
-                        d = Math.Sqrt(d);
-                        double push = (1 - d / 32) * 13 * pointerTime / d;
-                        px += delta.X * push;
-                        py += delta.Y * push;
-                    }
+                    double t = Ease((seconds - g.Lag) / .48);
+                    double sweep = Math.Sin(Math.PI * t);
+                    px += (w - 18 - px) * t + sweep * g.Speed;
+                    py += (h + 2 - py) * t - sweep * g.Radius;
                 }
                 if (px < 0 || py < 0 || px >= w - 1 || py >= h - 1) continue;
                 int ix = (int)px, iy = (int)py, i = iy * w + ix;
@@ -161,22 +159,33 @@ namespace OrbitCalendar
 
         public void Refresh()
         {
-            if (layer == null || !IsVisible) return;
+            if (layer == null || !IsVisible || Closing) return;
             face.UpdateLayout();
             if (assembling) { dirty = true; return; }
             grains = Sample();
             Paint();
         }
 
-        public void Nudge(Point p)
+        public void Dismiss(Action done)
         {
-            if (assembling || !SystemParameters.ClientAreaAnimation) return;
-            if (layer == null) return;
-            pointer = p;
-            pointerTime = 1;
+            if (Closing) return;
+            Stop();
+            if (layer == null || !SystemParameters.ClientAreaAnimation) { done(); return; }
+            // Use the most recently rendered positions even if opening was interrupted.
+            var departing = new List<Grain>();
+            for (int i = 0; i < raster.Length; i++)
+            {
+                int pixel = raster[i];
+                if ((uint)pixel >> 24 < 40) continue;
+                departing.Add(new Grain { Target = new Point(i % layer.PixelWidth, i / layer.PixelWidth),
+                    Ink = Color.FromRgb((byte)(pixel >> 16), (byte)(pixel >> 8), (byte)pixel),
+                    Radius = 15 + random.NextDouble() * 55, Speed = random.NextDouble() * 38 - 19,
+                    Lag = random.NextDouble() * .12 });
+            }
+            grains = departing.ToArray();
+            onDismissed = done;
             watch.Restart();
             Listen();
-            InvalidateVisual();
         }
 
         void Listen()
@@ -187,16 +196,19 @@ namespace OrbitCalendar
         void Frame(object sender, EventArgs e)
         {
             seconds = watch.Elapsed.TotalSeconds;
-            if (assembling)
+            if (Closing)
             {
-                if (seconds >= (morph ? .55 : 1.42)) Stop();
+                surface.Opacity = 1 - Ease(seconds / .58);
+                if (seconds >= .61)
+                {
+                    var done = onDismissed;
+                    done();
+                    Stop();
+                    return;
+                }
             }
-            else
-            {
-                pointerTime = 1 - Ease(seconds / .55);
-                if (pointerTime <= 0) { Stop(); dirty = true; }
-            }
-            if (dirty && !assembling) { dirty = false; face.UpdateLayout(); grains = Sample(); }
+            else if (seconds >= (morph ? .55 : 1.42)) Stop();
+            if (dirty && !assembling && !Closing) { dirty = false; face.UpdateLayout(); grains = Sample(); }
             Paint();
         }
 
@@ -209,7 +221,8 @@ namespace OrbitCalendar
         {
             CompositionTarget.Rendering -= Frame;
             rendering = assembling = false;
-            pointerTime = 0;
+            onDismissed = null;
+            surface.Opacity = 1;
             watch.Stop();
             InvalidateVisual();
         }

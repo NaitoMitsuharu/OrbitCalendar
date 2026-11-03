@@ -19,6 +19,7 @@ namespace OrbitCalendar
         readonly Brush aqua = Art.Ink("#7BE5DA"), muted = Art.Ink("#96ADB8"), lines = Art.Ink("#203A46");
         DateTime selected = DateTime.Today, today = DateTime.Today;
         DateTime copiedUntil;
+        int holidayRevision;
 
         T Get<T>(string name) where T : FrameworkElement { return (T)root.FindName(name); }
 
@@ -31,7 +32,7 @@ namespace OrbitCalendar
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Calendar.xaml"))
                 root = (Grid)XamlReader.Load(stream);
             dates = Get<Grid>("Dates");
-            effect = new AssemblyEffect(Get<Grid>("Face"));
+            effect = new AssemblyEffect(Get<Grid>("Face"), Get<Border>("ShellSurface"));
             Get<Grid>("Effects").Children.Add(effect);
             Content = new Viewbox { Child = root, Stretch = Stretch.Uniform };
             Art.DrawSky(Get<Canvas>("SkyMap"));
@@ -41,7 +42,6 @@ namespace OrbitCalendar
             Get<Button>("CloseButton").Click += delegate { collapse(); };
             Get<Button>("FocusButton").Click += delegate { toggleFocus(); };
             Get<Button>("Copy").Click += delegate { CopyDate(); };
-            root.MouseMove += delegate(object sender, MouseEventArgs e) { effect.Nudge(e.GetPosition(effect)); };
             PreviewKeyDown += OnKey;
             IsVisibleChanged += delegate { if (!IsVisible) effect.Stop(); };
             for (int c = 0; c < 8; c++) dates.ColumnDefinitions.Add(new ColumnDefinition { Width = c == 0 ? new GridLength(37) : new GridLength(1, GridUnitType.Star) });
@@ -52,6 +52,7 @@ namespace OrbitCalendar
 
         void OnKey(object sender, KeyEventArgs e)
         {
+            if (IsClosing) { e.Handled = true; return; }
             if (e.Key == Key.Escape) collapse();
             else if (mode != 0) return;
             else if (e.Key == Key.PageUp) MoveMonth(-1);
@@ -171,8 +172,20 @@ namespace OrbitCalendar
             Get<Button>("Copy").Content = "日付をコピー";
         }
 
+        public bool IsClosing { get { return effect.Closing; } }
+
+        public void Collapse()
+        {
+            if (!IsVisible || IsClosing) return;
+            if (loading != null) loading.Cancel();
+            root.IsHitTestVisible = false;
+            effect.Dismiss(Hide);
+        }
+
         public void Open()
         {
+            effect.Stop();
+            root.IsHitTestVisible = true;
             Shell.Position(this, 458, 542);
             if (mode != 0) SwitchView(0);
             Show();
@@ -183,10 +196,12 @@ namespace OrbitCalendar
 
         public void Tick(DateTime now, string focus)
         {
+            if (IsClosing) return;
             if (IsVisible && mode != 0 && loading == null && DateTime.UtcNow >= nextUpdate) LoadView(false);
-            if (today != now.Date)
+            if (today != now.Date || holidayRevision != Holidays.Revision)
             {
                 if (selected == today) selected = now.Date;
+                holidayRevision = Holidays.Revision;
                 today = now.Date;
                 DrawDates();
                 effect.Refresh();

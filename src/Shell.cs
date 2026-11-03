@@ -31,7 +31,7 @@ namespace OrbitCalendar
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)
             { if (!exiting) { e.Cancel = true; Collapse(); } };
             tick.Interval = TimeSpan.FromSeconds(1);
-            tick.Tick += delegate { Update(); };
+            tick.Tick += delegate { Holidays.Check(DateTime.UtcNow); Update(); };
             tick.Start();
             Update();
             clock = new ClockHost(Toggle, menu);
@@ -71,8 +71,8 @@ namespace OrbitCalendar
         }
 
         public void Open() { panel.Open(); }
-        void Collapse() { panel.Hide(); }
-        void Toggle() { if (panel.IsVisible) Collapse(); else Open(); }
+        void Collapse() { panel.Collapse(); }
+        void Toggle() { if (panel.IsVisible && !panel.IsClosing) Collapse(); else Open(); }
 
         void ToggleFocus()
         {

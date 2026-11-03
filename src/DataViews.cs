@@ -23,12 +23,12 @@ namespace OrbitCalendar
         void InitializeViews()
         {
             tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab") };
-            choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2") };
+            choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3") };
             tabs[0].Background = activeTab;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < choices.Length; i++)
             {
                 int value = i;
-                tabs[i].Click += delegate { if (mode != value) SwitchView(value); };
+                if (i < tabs.Length) tabs[i].Click += delegate { if (mode != value) SwitchView(value); };
                 choices[i].Click += delegate { if (choice[mode] != value) { choice[mode] = value; SwitchView(mode); } };
             }
             Get<Button>("RefreshData").Click += delegate { LoadView(true); };
@@ -68,7 +68,12 @@ namespace OrbitCalendar
             try
             {
                 for (int i = 0; i < choices.Length; i++)
-                { choices[i].Content = names[i]; choices[i].Background = i == index ? activeTab : Brushes.Transparent; }
+                {
+                    choices[i].Visibility = i < names.Length ? Visibility.Visible : Visibility.Collapsed;
+                    if (i >= names.Length) continue;
+                    choices[i].Content = names[i];
+                    choices[i].Background = i == index ? activeTab : Brushes.Transparent;
+                }
                 Get<TextBlock>("SectionLabel").Text = market ? "MARKET   /   3 MONTHS" : "WEATHER   /   PRECIPITATION";
                 Get<Button>("DataSource").Content = market ? "Yahoo Finance  ↗" : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
                 LiveData.View view;
@@ -83,7 +88,7 @@ namespace OrbitCalendar
                 }
                 if (fetch)
                 {
-                    stamp.Text = view == null ? "データを取得中…" : view.Stamp + "  ·  更新中";
+                    stamp.Text = view == null ? (!market && index == 0 ? "現在地と雨雲を確認中…" : "データを取得中…") : view.Stamp + "  ·  更新中";
                     refresh.IsEnabled = false;
                 }
                 UpdateLayout();
