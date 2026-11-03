@@ -69,6 +69,7 @@ namespace OrbitCalendar
         void SwitchView(int value)
         {
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
+            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
             StopRadar();
             if (loading != null) loading.Cancel();
             mode = value;
@@ -159,12 +160,24 @@ namespace OrbitCalendar
             Get<Button>("RadarPlay").Content = "▶";
         }
 
+        void DrawRadar(LiveData.View view)
+        {
+            var plot = Get<Canvas>("Plot");
+            plot.Children.Add(new Image { Source = view.Map });
+            if (!view.LocationPoint.HasValue) return;
+            var point = view.LocationPoint.Value;
+            var halo = new Ellipse { Width = 14, Height = 14, Fill = Art.Ink("#492D3C"), Stroke = Art.Ink("#FFE6E6"), StrokeThickness = 1 };
+            Canvas.SetLeft(halo, point.X - 7); Canvas.SetTop(halo, point.Y - 7); plot.Children.Add(halo);
+            var dot = new Ellipse { Width = 8, Height = 8, Fill = Art.Ink("#FF4949"), ToolTip = "現在地（位置情報による推定）" };
+            Canvas.SetLeft(dot, point.X - 4); Canvas.SetTop(dot, point.Y - 4); plot.Children.Add(dot);
+        }
+
         void ShowRadarFrame(int index)
         {
             var frame = radarFrames[index];
             var plot = Get<Canvas>("Plot");
             plot.Children.Clear();
-            plot.Children.Add(new Image { Source = frame.Map });
+            DrawRadar(frame);
             Get<TextBlock>("DataStamp").Text = frame.Stamp;
             Get<TextBlock>("RadarClock").Text = frame.Stamp.Substring(11, 5);
             effect.Refresh();
@@ -186,7 +199,7 @@ namespace OrbitCalendar
                 Get<Slider>("RadarTime").Maximum = radarFrames.Length - 1;
                 Get<Slider>("RadarTime").Value = radarFrames.Length - 1;
                 updatingTimeline = false;
-                plot.Children.Add(new Image { Source = view.Map });
+                DrawRadar(view);
                 Get<TextBlock>("RadarClock").Text = view.Stamp.Substring(11, 5);
                 return;
             }

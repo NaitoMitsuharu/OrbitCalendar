@@ -12,7 +12,7 @@ namespace OrbitCalendar
         struct Grain
         {
             public Point Target, Origin, Current;
-            public bool Edge;
+            public bool Edge, Moving;
             public double Latitude, Longitude, Radius, Speed, Lag;
             public Color Ink;
         }
@@ -78,11 +78,21 @@ namespace OrbitCalendar
             return dots.ToArray();
         }
 
-        public void Start(bool fromPrevious)
+        public void Start(bool fromPrevious) { Start(fromPrevious, new Rect(face.RenderSize)); }
+
+        public void StartArea(Rect area, bool restart = false) { Start(!restart, area); }
+
+        void Start(bool fromPrevious, Rect area)
         {
             motionStyle = Preferences.Motion == 0 ? (++sequence % 5) + 1 : Preferences.Motion;
             dirty = false;
             var old = grains;
+            if (old != null && area.Width < face.RenderSize.Width)
+            {
+                var local = new List<Grain>();
+                foreach (var grain in old) if (area.Contains(grain.Target)) local.Add(grain);
+                old = local.ToArray();
+            }
             Stop();
             face.UpdateLayout();
             grains = Sample();
@@ -92,6 +102,7 @@ namespace OrbitCalendar
             {
                 // Roughly equal area per speck. Latitude bands on the inner shell
                 // and a few eccentric outer orbits make the rotation legible.
+                grains[i].Moving = area.Contains(grains[i].Target);
                 double lat = Math.Asin(2 * random.NextDouble() - 1);
                 grains[i].Latitude = i % 4 == 0 ? lat : Math.Round(lat * 16) / 16;
                 grains[i].Longitude = random.NextDouble() * 2 * Math.PI;
@@ -105,6 +116,9 @@ namespace OrbitCalendar
                     grains[i].Origin = new Point(grains[i].Target.X * .28 + 420 * .72 + Math.Cos(angle) * 65,
                         grains[i].Target.Y * .28 + 535 * .72 + Math.Sin(angle) * 65);
                 }
+                if (area.Width < face.RenderSize.Width && !morph)
+                    grains[i].Origin = new Point(area.Right - 8 - random.NextDouble() * Math.Min(65, area.Width),
+                        area.Bottom - 5 - random.NextDouble() * Math.Min(25, area.Height));
             }
             int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
             if (layer == null || layer.PixelWidth != w || layer.PixelHeight != h)
@@ -148,7 +162,7 @@ namespace OrbitCalendar
                 var g = grains[index];
                 double px = g.Target.X, py = g.Target.Y;
                 int red = g.Ink.R, green = g.Ink.G, blue = g.Ink.B;
-                if (assembling)
+                if (assembling && g.Moving)
                 {
                     if (motionStyle == 6)
                     {
@@ -210,10 +224,10 @@ namespace OrbitCalendar
                 }
                 else if (Closing)
                 {
-                    double t = Ease((seconds - g.Lag) / .48);
+                    double t = Ease(seconds / .62);
                     double sweep = Math.Sin(Math.PI * t);
-                    px += (w - 18 - px) * t + sweep * g.Speed;
-                    py += (h + 2 - py) * t - sweep * g.Radius;
+                    px += (w - 18 - px) * t + sweep * g.Speed * (1 - t);
+                    py += (h - py) * t - sweep * g.Radius * (1 - t);
                 }
                 grains[index].Current = new Point(px, py);
                 if (px < 0 || py < 0 || px >= w - 1 || py >= h - 1) continue;
@@ -280,8 +294,10 @@ namespace OrbitCalendar
             seconds = watch.Elapsed.TotalSeconds;
             if (Closing)
             {
-                surface.Opacity = 1 - Ease(seconds / .58);
-                if (seconds >= .61)
+                double scale = 1 - Ease(seconds / .62);
+                surface.RenderTransformOrigin = new Point((face.RenderSize.Width - 18) / face.RenderSize.Width, 1);
+                surface.RenderTransform = new ScaleTransform(scale, scale);
+                if (seconds >= .65)
                 {
                     var done = onDismissed;
                     done();
@@ -305,6 +321,7 @@ namespace OrbitCalendar
             rendering = assembling = false;
             onDismissed = null;
             surface.Opacity = 1;
+            surface.RenderTransform = Transform.Identity;
             watch.Stop();
             InvalidateVisual();
         }

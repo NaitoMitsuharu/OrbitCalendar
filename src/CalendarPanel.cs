@@ -77,10 +77,13 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (e.Key == Key.Escape && Get<Border>("TimerPicker").Visibility == Visibility.Visible)
+            if (e.Key == Key.Escape && Get<Border>("SettingsPicker").Visibility == Visibility.Visible)
             {
-                Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
-                effect.Refresh();
+                ClosePanel("SettingsPicker");
+            }
+            else if (e.Key == Key.Escape && Get<Border>("TimerPicker").Visibility == Visibility.Visible)
+            {
+                ClosePanel("TimerPicker");
             }
             else if (e.Key == Key.Escape) collapse();
             else if (mode != 0) return;
@@ -193,6 +196,7 @@ namespace OrbitCalendar
             if (!IsVisible || IsClosing) return;
             if (loading != null) loading.Cancel();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
+            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
             root.IsHitTestVisible = false;
             effect.Dismiss(Hide);
         }

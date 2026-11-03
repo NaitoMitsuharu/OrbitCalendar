@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Windows;
 using System.Device.Location;
 using System.Linq;
 using System.Net;
@@ -51,6 +52,7 @@ namespace OrbitCalendar
             public string Heading, Stamp, Caption;
             public List<Candle> Bars;
             public BitmapSource Map;
+            public Point? LocationPoint;
             public View[] Frames;
             public DateTime Fetched = DateTime.UtcNow;
         }
@@ -131,10 +133,14 @@ namespace OrbitCalendar
             return new Tile { X = x, Y = y, Base = Pixels(land.Result), Rain = Pixels(rain.Result) };
         }
 
+        static GeoCoordinate lastPosition;
+        static DateTime lastPositionTime;
+
         public static async Task<View> Weather(int region, CancellationToken token)
         {
             var here = region == 0 ? await CurrentPosition(token) : null;
             token.ThrowIfCancellationRequested();
+            if (here != null) { lastPosition = here; lastPositionTime = DateTime.UtcNow; }
             return await WeatherAt(region, here, token).ConfigureAwait(false);
         }
 
@@ -178,23 +184,23 @@ namespace OrbitCalendar
             if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
                 here.Longitude >= 120 && here.Longitude <= 155)
             {
-                var local = await RadarSequence(sequence, "現在地周辺", here.Latitude, here.Longitude, 9, token).ConfigureAwait(false);
+                var local = await RadarSequence(sequence, "現在地周辺", here.Latitude, here.Longitude, 9, token, here).ConfigureAwait(false);
                 if (local != null) return local;
             }
             int preset = Math.Max(1, region) - 1;
             var map = await RadarSequence(sequence, Regions[preset + 1], new[] { 35.7, 35.7, 34.8 }[preset],
-                new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token).ConfigureAwait(false);
+                new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token, region == 0 ? here : DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null).ConfigureAwait(false);
             if (map == null) throw new InvalidDataException();
             return map;
         }
 
-        static async Task<View> RadarSequence(RadarTime[] times, string name, double latitude, double lon, int zoom, CancellationToken token)
+        static async Task<View> RadarSequence(RadarTime[] times, string name, double latitude, double lon, int zoom, CancellationToken token, GeoCoordinate marker = null)
         {
             var frames = new List<View>();
             foreach (var time in times)
             {
                 token.ThrowIfCancellationRequested();
-                var frame = await RadarMap(time, name, latitude, lon, zoom, token).ConfigureAwait(false);
+                var frame = await RadarMap(time, name, latitude, lon, zoom, token, marker).ConfigureAwait(false);
                 if (frame != null) frames.Add(frame);
             }
             if (frames.Count == 0) return null;
@@ -203,7 +209,7 @@ namespace OrbitCalendar
             return latest;
         }
 
-        static async Task<View> RadarMap(RadarTime time, string name, double latitude, double lon, int z, CancellationToken token)
+        static async Task<View> RadarMap(RadarTime time, string name, double latitude, double lon, int z, CancellationToken token, GeoCoordinate marker = null)
         {
             const int width = 414, height = 230;
             double scale = z == 4 ? .76 : .88;
@@ -235,10 +241,18 @@ namespace OrbitCalendar
                     { b = tile.Rain[j]; g = tile.Rain[j + 1]; r = tile.Rain[j + 2]; }
                     pixels[p] = (byte)b; pixels[p + 1] = (byte)g; pixels[p + 2] = (byte)r; pixels[p + 3] = 255;
                 }
+            Point? position = null;
+            if (marker != null && !marker.IsUnknown)
+            {
+                double phi = marker.Latitude * Math.PI / 180;
+                double mx = (world * (marker.Longitude + 180) / 360 - left) * scale;
+                double my = (world * (1 - Math.Log(Math.Tan(phi) + 1 / Math.Cos(phi)) / Math.PI) / 2 - top) * scale;
+                if (mx >= 0 && mx < width && my >= 0 && my < height) position = new Point(mx, my);
+            }
             var map = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
             map.Freeze();
             var stamp = DateTime.ParseExact(time.validtime, "yyyyMMddHHmmss", CultureInfo.InvariantCulture).AddHours(9);
-            return new View { Map = map, Heading = name + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") + " 観測（日本時間）",
+            return new View { Map = map, LocationPoint = position, Heading = name + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") + " 観測（日本時間）",
                 Caption = "降水強度    青：弱い雨   黄～赤：強い雨   紫：猛烈な雨" };
         }
     }

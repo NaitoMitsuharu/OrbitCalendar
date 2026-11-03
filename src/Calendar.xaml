@@ -28,7 +28,7 @@
         <Button Name="WeatherTab" Content="雨雲" Width="58"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-        <Button Name="SettingsButton" Content="⚙" Width="32" ToolTip="表示設定" AutomationProperties.Name="表示設定"/>
+        <Button Name="SettingsButton" Content="⚙" Width="32" AutomationProperties.Name="表示設定"/>
         <Button Name="CloseButton" Content="×" FontSize="19" Width="29" Height="29" Margin="10,0,-5,0" ToolTip="時計に戻る (Esc)" AutomationProperties.Name="時計に戻る"/>
       </StackPanel></Grid>
       <Grid Grid.Row="1" Name="CalendarBody"><Grid.RowDefinitions><RowDefinition Height="101"/><RowDefinition Height="*"/><RowDefinition Height="68"/><RowDefinition Height="43"/></Grid.RowDefinitions>
@@ -81,6 +81,27 @@
         </StackPanel>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
+      <Border Name="SettingsPicker" Grid.RowSpan="2" Width="422" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,48"
+              Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="13" Visibility="Collapsed">
+        <StackPanel>
+          <Grid Margin="3,0,3,7">
+            <TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/>
+            <Button Name="CloseSettingsPicker" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
+          </Grid>
+          <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
+          <UniformGrid Name="PatternChoices" Columns="4"/>
+          <TextBlock Text="組み上がり方" Foreground="#92B5BE" FontSize="12" Margin="4,9,0,3"/>
+          <UniformGrid Name="MotionChoices" Columns="3"/>
+          <Border Name="PreviewArea" BorderBrush="#2A5965" BorderThickness="1" CornerRadius="6" Padding="12" Margin="4,10,4,3">
+            <StackPanel>
+              <TextBlock Name="PreviewTitle" Text="W45.2" Foreground="#B5F8ED" FontFamily="Bahnschrift" FontSize="29" HorizontalAlignment="Center"/>
+              <TextBlock Text="01   02   03   04   05   06   07" Foreground="#8EC5FF" FontFamily="Consolas" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+              <TextBlock Text="08   09   10   11   12   13   14" Foreground="#DBEDF0" FontFamily="Consolas" FontSize="14" HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+          <Button Name="ReplayPreview" Content="▶  もう一度プレビュー" Foreground="#8FE4DD" Margin="4,3"/>
+        </StackPanel>
+      </Border>
       <Border Name="TimerPicker" Grid.RowSpan="2" Width="312" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,48"
               Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="12" Visibility="Collapsed">
         <StackPanel>
