@@ -90,9 +90,14 @@
         <TextBlock Name="MapHint" FontFamily="Segoe UI" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Foreground="#B9D7DE" FontSize="12" Margin="0,5,0,0" Visibility="Collapsed"/>
         <Canvas Name="Plot" Background="Transparent" Width="414" Height="220" Margin="0,12,0,0" ClipToBounds="True"/>
         <TextBlock Name="PlotCaption" Foreground="#CAEAEB" FontSize="13" Margin="0,6,0,6"/>
+        <Grid Name="RainLegend" Height="31" Margin="0,5,0,3" Visibility="Collapsed">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="82"/><ColumnDefinition/></Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center"><TextBlock Name="RainLegendTitle" Text="降水強度" Foreground="#D5EAEC" FontSize="11"/><TextBlock Name="RainLegendUnit" Text="(mm/h)" Foreground="#AFCAD2" FontSize="10"/></StackPanel>
+          <Canvas Name="RainLegendBar" Grid.Column="1" IsHitTestVisible="False"/>
+        </Grid>
         <StackPanel Name="RadarControls" Orientation="Horizontal" Visibility="Collapsed">
           <Button Name="RadarPlay" Content="▶" Width="30" ToolTip="雨雲の時刻を再生"/>
-          <Slider Name="RadarTime" Width="252" Minimum="0" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Margin="8,0"/>
+          <Slider Name="RadarTime" Width="306" Minimum="0" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" IsMoveToPointEnabled="True" Margin="8,0"/>
           <TextBlock Name="RadarClock" Foreground="#B3DBDF" VerticalAlignment="Center"/>
         </StackPanel>
         <TextBlock Name="RadarRange" Foreground="#92B5BE" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Margin="0,2,0,1" Visibility="Collapsed"/>

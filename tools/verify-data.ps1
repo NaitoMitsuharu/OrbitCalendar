@@ -98,16 +98,29 @@ try {
     $pt.GetMethod('ShowData',$if).Invoke($panel,@($weather))|Out-Null;$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Start($true);Pump 1900
     $slider=$root.FindName('RadarTime');Assert ($slider.Value -eq 0 -and $slider.Maximum -eq $maxMinutes -and $slider.Ticks.Count -eq $frames.Length) 'Slider is not proportional to actual forecast times'
     Snapshot 'weather-now.png';$slider.Value=$slider.Maximum;Pump 300
-    Assert ($root.FindName('PlotCaption').Text.Contains('1時間降水量') -and $root.FindName('RadarClock').Text.StartsWith('+') -and $root.FindName('DataSource').Content.Contains('今後の雨')) 'Long-range units or time offset missing'
+    Assert ($root.FindName('RainLegendUnit').Text -eq '(mm)' -and $root.FindName('RadarClock').Text -match '^\d{2}:\d{2}$' -and $root.FindName('DataSource').Content.Contains('今後の雨')) 'Long-range legend units or clock incorrect'
     Snapshot 'weather-three-hours.png'
     $pt.GetMethod('ShowData',$if).Invoke($panel,@($frames[-1]))|Out-Null
     Assert ($slider.Ticks.Count -eq $frames.Length -and $slider.Value -eq $slider.Maximum) 'Selecting a future frame loses the rest of the timeline'
     $nowLabels=@($root.FindName('Plot').Children|Where-Object {$_.Tag -like 'city:*'}|ForEach-Object Tag)
     $slider.Value=0;Pump 150
-    Assert ($root.FindName('PlotCaption').Text.Contains('mm/h') -and ($root.FindName('RadarClock').Text.StartsWith('今') -or $root.FindName('RadarClock').Text.StartsWith('観測'))) 'Return to observation failed'
+    Assert ($root.FindName('RainLegendUnit').Text -eq '(mm/h)' -and $root.FindName('RadarClock').Text -match '^\d{2}:\d{2}$') 'Return to observation failed'
     Assert (-not (Compare-Object $nowLabels @($root.FindName('Plot').Children|Where-Object {$_.Tag -like 'city:*'}|ForEach-Object Tag))) 'Cities change with forecast time'
     $button=$root.FindName('RadarPlay');$button.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Pump 800
-    Assert ($slider.Value -gt 0) 'Playback did not advance';$pt.GetMethod('StopRadar',$if).Invoke($panel,@())|Out-Null
+    Assert ($slider.Value -gt 0) 'Playback did not advance'
+    $playback=$pt.GetField('radarPlayback',$if).GetValue($panel)
+    for($step=0;$step -lt $frames.Length;$step++){$pt.GetMethod('AdvanceRadarPlayback',$if).Invoke($panel,@())|Out-Null}
+    Assert (-not $playback.IsEnabled -and $slider.Value -eq $slider.Maximum -and $button.Content -eq '▶') 'Playback did not stop at the final frame'
+    Pump 850
+    Assert ($slider.Value -eq $slider.Maximum) 'Playback looped after the last frame'
+    $button.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+    Assert ($playback.IsEnabled -and $slider.Value -eq 0) 'Replay did not restart at the beginning'
+    $pt.GetMethod('StopRadar',$if).Invoke($panel,@())|Out-Null
+    Assert $slider.IsMoveToPointEnabled 'Track clicks still move by a fixed increment'
+    Assert (@($root.FindName('RainLegendBar').Children|Where-Object {$_ -is [Windows.Shapes.Rectangle]}).Count -eq 8) 'Rain scale does not have eight color bins'
+    Assert (-not $root.FindName('RadarRange').Text.Contains('+')) 'Relative offsets remain in the range'
+    $slider.Value=$slider.Maximum;Pump 200;Snapshot 'weather-three-hours.png'
+
     $sourceBounds=$root.FindName('DataSource').TransformToAncestor($root).TransformBounds([Windows.Rect]::new($root.FindName('DataSource').RenderSize))
     Assert ($sourceBounds.Bottom -lt 542) 'Forecast UI extends outside window'
     Write-Output 'PASS: NAV parsing/status, odd-zoom alignment, future-only timeline, actual-time slider, units, playback and cities (live NAV tests run unless skipped)'

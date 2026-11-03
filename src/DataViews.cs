@@ -33,19 +33,20 @@ namespace OrbitCalendar
             InitializePlacePicker();
             InitializeMarketSettings();
             radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
-            radarPlayback.Tick += delegate
-            {
-                if (radarFrames == null || radarFrames.Length < 2) { StopRadar(); return; }
-                var slider = Get<Slider>("RadarTime");
-                int index = RadarIndex(slider.Value);
-                slider.Value = RadarMinutes(radarFrames[(index + 1) % radarFrames.Length]);
-            };
+            radarPlayback.Tick += delegate { AdvanceRadarPlayback(); };
             Get<Button>("RadarPlay").Click += delegate
             {
                 if (radarFrames == null || radarFrames.Length < 2) return;
                 if (radarPlayback.IsEnabled) StopRadar();
-                else { radarPlayback.Start(); Get<Button>("RadarPlay").Content = "■"; effect.Refresh(); }
+                else
+                {
+                    var slider = Get<Slider>("RadarTime");
+                    if (RadarIndex(slider.Value) == radarFrames.Length - 1) slider.Value = RadarMinutes(radarFrames[0]);
+                    radarPlayback.Start(); Get<Button>("RadarPlay").Content = "■"; effect.Refresh();
+                }
             };
+            Get<Slider>("RadarTime").PreviewMouseLeftButtonDown += delegate { StopRadar(); effect.Refresh(); };
+            InitializeRainLegend();
             Get<Slider>("RadarTime").ValueChanged += delegate
             {
                 if (updatingTimeline || radarFrames == null || mode != 2) return;
@@ -109,6 +110,8 @@ namespace OrbitCalendar
             Get<Canvas>("Plot").Height = market ? 220 : LiveData.MapHeight + 6;
             Get<StackPanel>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             Get<TextBlock>("RadarRange").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<Grid>("RainLegend").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<TextBlock>("PlotCaption").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
             var names = LiveData.Regions;
             var stamp = Get<TextBlock>("DataStamp");
             var refresh = Get<Button>("RefreshData");

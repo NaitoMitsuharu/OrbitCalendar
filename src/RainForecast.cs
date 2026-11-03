@@ -37,8 +37,10 @@ namespace OrbitCalendar
             var result = new List<RadarTime> { observed };
             var near = nowcast.Where(t => t.elements != null && t.elements.Contains("hrpns") &&
                 RainUtc(t.validtime) > origin && RainUtc(t.validtime) <= origin.AddHours(1)).ToArray();
-            for (int minutes = 10; minutes <= 60; minutes += 10)
-                AddNearestRain(result, near, origin.AddMinutes(minutes), 5, false);
+            foreach (var time in near.GroupBy(t => t.validtime).Select(g => g.OrderByDescending(t => t.basetime, StringComparer.Ordinal).First()))
+            {
+                time.Product = "nowc"; result.Add(time);
+            }
             // Public short-range tiles advance in roughly one-hour steps. Use real
             // available times, ending closest to +3h (within about half an hour).
             var far = shortRange.Where(t => t.elements != null && t.elements.Contains("rasrf") && t.basetime != t.validtime &&
@@ -57,16 +59,6 @@ namespace OrbitCalendar
                 }
             foreach (var time in result) time.OriginUtc = origin;
             return result.OrderBy(t => t.validtime, StringComparer.Ordinal).ToArray();
-        }
-
-        static void AddNearestRain(List<RadarTime> result, RadarTime[] candidates, DateTime target, int tolerance, bool hourly)
-        {
-            var time = candidates.OrderBy(t => Math.Abs((RainUtc(t.validtime) - target).TotalMinutes))
-                .ThenByDescending(t => t.basetime, StringComparer.Ordinal).FirstOrDefault();
-            if (time == null || Math.Abs((RainUtc(time.validtime) - target).TotalMinutes) > tolerance ||
-                result.Any(t => t.validtime == time.validtime)) return;
-            time.Product = hourly ? "rasrf" : "nowc";
-            result.Add(time);
         }
 
         static async Task<byte[]> RainPixels(int zoom, int x, int y, RadarTime time, CancellationToken token,
