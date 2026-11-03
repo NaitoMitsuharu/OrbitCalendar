@@ -212,6 +212,7 @@ namespace OrbitCalendar
             var plot = Get<Canvas>("Plot");
             activeWeather = view;
             plot.Children.Add(new Image { Source = view.Map });
+            DrawCityLabels(view);
             Get<TextBlock>("MapHint").Text = view.LocationHint + " · ホイール拡縮 / ドラッグ移動";
             DrawCandidatePlace(view);
             if (!view.LocationPoint.HasValue) return;
