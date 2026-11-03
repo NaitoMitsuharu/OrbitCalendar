@@ -72,7 +72,7 @@ namespace OrbitCalendar
         void OpenMarketSettings(bool search)
         {
             CancelPlaceSelection();
-            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
+            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             effect.Refresh();
             var picker = Get<Border>("MarketPicker");

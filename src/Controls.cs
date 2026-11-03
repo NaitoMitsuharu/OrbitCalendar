@@ -12,10 +12,13 @@ namespace OrbitCalendar
     {
         static readonly string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OrbitCalendar", "display.txt");
         public static int Pattern, Motion = 6, Minutes = 30, LastTab, LoadingStyle;
+        public static int AnimationSpeed = 1;
+        public static double AnimationScale { get { return AnimationSpeed == 0 ? .5 : AnimationSpeed == 2 ? 1.4 : 1; } }
         static Preferences() { Load(); }
         internal static void Load()
         {
             Pattern = LastTab = LoadingStyle = 0; Motion = 6; Minutes = 30;
+            AnimationSpeed = 1;
             try
             {
                 var parts = File.ReadAllLines(path);
@@ -25,13 +28,14 @@ namespace OrbitCalendar
                 if (parts.Length > 2 && int.TryParse(parts[2], out value) && value >= 1 && value <= 180) Minutes = value;
                 if (parts.Length > 3 && int.TryParse(parts[3], out value) && value >= 0 && value <= 4) LastTab = value;
                 if (parts.Length > 4 && int.TryParse(parts[4], out value) && value >= 0 && value < 6) LoadingStyle = value;
+                if (parts.Length > 5 && int.TryParse(parts[5], out value) && value >= 0 && value < 3) AnimationSpeed = value;
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
         public static void Save()
         {
-            try { Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path, new[] { Pattern.ToString(), Motion.ToString(), Minutes.ToString(), LastTab.ToString(), LoadingStyle.ToString() }); }
+            try { Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path, new[] { Pattern.ToString(), Motion.ToString(), Minutes.ToString(), LastTab.ToString(), LoadingStyle.ToString(), AnimationSpeed.ToString() }); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
@@ -43,6 +47,7 @@ namespace OrbitCalendar
         OutsideClick outside;
         void InitializeControls()
         {
+            InitializeAnimationSpeed();
             outside = new OutsideClick(delegate { if (IsVisible && !IsClosing) collapse(); });
             IsVisibleChanged += delegate { outside.Enabled = IsVisible; };
             Closed += delegate { outside.Dispose(); };
@@ -51,7 +56,7 @@ namespace OrbitCalendar
                 CloseMarketSettings();
                 CancelPlaceSelection();
                 var picker = Get<Border>("TimerPicker");
-                Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
+                Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
                 bool opening = picker.Visibility != Visibility.Visible;
                 Rect bounds = PanelBounds(picker);
                 picker.Visibility = opening ? Visibility.Visible : Visibility.Collapsed;
@@ -94,7 +99,8 @@ namespace OrbitCalendar
                     var picker = Get<Border>(name);
                     var opener = Get<Button>(name == "TimerPicker" ? "TimerDuration" : "SettingsButton");
                     if (picker.Visibility == Visibility.Visible && target != opener &&
-                        !picker.IsAncestorOf(target) && !opener.IsAncestorOf(target)) ClosePanel(name);
+                        !picker.IsAncestorOf(target) && !opener.IsAncestorOf(target) &&
+                        !(name == "SettingsPicker" && Get<Border>("SpeedPicker").IsAncestorOf(target))) ClosePanel(name);
                 }
             };
             Get<Button>("SettingsButton").Click += delegate
@@ -123,12 +129,14 @@ namespace OrbitCalendar
             var panel = Get<Border>(name);
             if (panel.Visibility != Visibility.Visible) return;
             Rect bounds = PanelBounds(panel);
+            if (name == "SettingsPicker") Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
             panel.Visibility = Visibility.Collapsed;
             effect.StartArea(bounds);
         }
 
         void UpdateSettingChoices()
         {
+            UpdateSpeedChoices();
             FillChoices("PatternChoices", new[] { "ドット", "グリッド", "ストライプ", "きらめき" }, Preferences.Pattern, delegate(int value)
             {
                 Preferences.Pattern = value;

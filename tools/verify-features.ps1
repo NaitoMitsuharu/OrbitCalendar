@@ -5,7 +5,7 @@ Add-Type -AssemblyName WindowsBase,PresentationCore,PresentationFramework,System
 $a=[Reflection.Assembly]::LoadFrom((Resolve-Path build/OrbitCalendar.exe))
 $sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
 $folder=Join-Path $env:TEMP ('orbit-features-qa-'+[guid]::NewGuid());New-Item -ItemType Directory $folder|Out-Null
-$prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0)
+$prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0);$prefs.GetField('AnimationSpeed',$sf).SetValue($null,1)
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'));$watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
 # In-memory public fixture only; never write or reveal the user's saved coordinates.
 $place=$a.GetType('OrbitCalendar.SavedPlace');$place.GetProperty('Coordinate',$sf).SetValue($null,[Device.Location.GeoCoordinate]::new(35.681236,139.767125),$null)
@@ -65,7 +65,7 @@ try{
  Click 'RainMode';WaitLoading;Assert ($root.FindName('Plot').Visibility -eq 'Visible' -and $root.FindName('DailyWeatherBody').Visibility -eq 'Collapsed') 'Return to radar failed'
  Click 'NewsTab';WaitLoading;Assert ($root.Height -eq 542 -and $root.FindName('InformationBody').Children.Count -gt 1) 'News UI missing';WaitNews;Snapshot 'news.png'
  Click 'NewsCategory2';WaitLoading;Assert ($pt.GetField('choice',$if).GetValue($panel)[3] -eq 2) 'News category failed'
- Click 'TransitTab';WaitLoading;Assert ($root.FindName('InformationBody').Children.Count -eq [Math]::Max(1,@($transit.Items|Where-Object Normal -eq $false|Select-Object -First 3).Count)) 'Transit status missing';Snapshot 'transit.png'
+ Click 'TransitTab';WaitLoading;Assert (@($root.FindName('InformationBody').Children|Where-Object Tag -eq 'transit-disruption').Count -eq @($transit.Items|Where-Object Normal -eq $false|Select-Object -First 3).Count) 'Transit disruption count incorrect';Assert ($root.FindName('InformationBody').Children.Count -ge 1) 'Transit status missing';Snapshot 'transit.png'
  Click 'Choice1';WaitLoading;Assert ($pt.GetField('choice',$if).GetValue($panel)[4] -eq 1) 'Transit filter failed'
  Click 'CalendarTab';Pump 1700;Assert ($root.Height -eq 542 -and $root.FindName('CalendarBody').Visibility -eq 'Visible') 'Calendar return failed';Snapshot 'calendar.png'
  Write-Output 'PASS: live news/official transit/three-day weather; parser unknown/disruption safety; hourly temperature interpolation; <=1h radar, continuous seek/playback, single pass/replay; five-tab navigation, category/day selection'

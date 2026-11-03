@@ -175,9 +175,10 @@
             <UniformGrid Name="LoadingChoices" Columns="3"/>
             <Border Name="LoadingPreviewArea" Height="132" BorderBrush="#2A5965" BorderThickness="1" CornerRadius="6" Margin="4,10,4,3"><Grid Name="LoadingPreview" ClipToBounds="True"/></Border>
           </StackPanel></Grid>
-          <Grid><Button Name="ReplayPreview" Content="▶  もう一度プレビュー" HorizontalAlignment="Left" Foreground="#8FE4DD" Margin="4,3"/><Button Name="OpenCredits" Content="データ出典" HorizontalAlignment="Right" Margin="4,3" Foreground="#92B5BE"/></Grid>
+          <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button Name="ReplayPreview" Content="▶  もう一度プレビュー" HorizontalAlignment="Left" Foreground="#8FE4DD" Margin="4,3"/><Button Name="AnimationSpeed" Grid.Column="1" Content="速度：標準 ▾" HorizontalAlignment="Center" Width="108" Margin="0,3" ToolTip="画面の開閉・切り替えの演出速度"/><Button Name="OpenCredits" Grid.Column="2" Content="データ出典" HorizontalAlignment="Right" Margin="4,3" Foreground="#92B5BE"/></Grid>
         </StackPanel>
       </Border>
+      <Border Name="SpeedPicker" Grid.RowSpan="2" Width="176" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0,0,0,82" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="7" Padding="7" Visibility="Collapsed"><StackPanel Name="SpeedChoices"/></Border>
       <Border Name="TimerPicker" Grid.RowSpan="2" Width="312" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,17,48"
               Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="12" Visibility="Collapsed">
         <StackPanel>

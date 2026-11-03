@@ -28,6 +28,7 @@ namespace OrbitCalendar
         public bool Busy { get { return assembling || Closing; } }
         public bool Closing { get { return onDismissed != null; } }
         double seconds;
+        double timeScale = 1;
         bool assembling, morph, rendering, dirty;
         int motionStyle, sequence;
         const double Gather = 1.05;
@@ -100,6 +101,7 @@ namespace OrbitCalendar
 
         void Start(bool fromPrevious, Rect area, Rect[] regions = null)
         {
+            timeScale = Preferences.AnimationScale;
             motionStyle = Preferences.Motion == 0 ? (++sequence % 5) + 1 : Preferences.Motion;
             dirty = false;
             var previous = grains;
@@ -323,6 +325,7 @@ namespace OrbitCalendar
         {
             if (Closing) return;
             Stop();
+            timeScale = Preferences.AnimationScale;
             if (layer == null || !SystemParameters.ClientAreaAnimation) { done(); return; }
             // Use the most recently rendered positions even if opening was interrupted.
             var departing = new List<Grain>();
@@ -348,7 +351,7 @@ namespace OrbitCalendar
 
         void Frame(object sender, EventArgs e)
         {
-            seconds = watch.Elapsed.TotalSeconds;
+            seconds = watch.Elapsed.TotalSeconds / timeScale;
             if (Closing)
             {
                 double scale = 1 - Ease(seconds / .62);

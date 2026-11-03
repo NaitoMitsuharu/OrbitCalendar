@@ -82,6 +82,7 @@ namespace OrbitCalendar
             if (e.Key == Key.Escape && Get<Border>("MarketPicker").Visibility == Visibility.Visible) CloseMarketSettings();
             else if (Get<Border>("MarketPicker").Visibility == Visibility.Visible) return;
             else if (e.Key == Key.Escape && selectingPlace) { CancelPlaceSelection(); effect.Refresh(); }
+            else if (e.Key == Key.Escape && Get<Border>("SpeedPicker").Visibility == Visibility.Visible) ClosePanel("SpeedPicker");
             else if (e.Key == Key.Escape && Get<Border>("SettingsPicker").Visibility == Visibility.Visible)
             {
                 ClosePanel("SettingsPicker");
@@ -216,7 +217,7 @@ namespace OrbitCalendar
             if (loading != null) { loading.Cancel(); nextUpdate = DateTime.MinValue; }
             CancelPlaceSelection();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
-            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
+            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
             root.IsHitTestVisible = false;
             effect.Dismiss(Hide);
         }

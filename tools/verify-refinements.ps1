@@ -5,7 +5,7 @@ Add-Type -AssemblyName WindowsBase,PresentationCore,PresentationFramework,System
 $a=[Reflection.Assembly]::LoadFrom((Resolve-Path build/OrbitCalendar.exe));$sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
 $folder=Join-Path $env:TEMP ('orbit-refinements-qa-'+[guid]::NewGuid());New-Item -ItemType Directory $folder|Out-Null
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'));$watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
-$prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0)
+$prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0);$prefs.GetField('AnimationSpeed',$sf).SetValue($null,1)
 $a.GetType('OrbitCalendar.SavedPlace').GetProperty('Coordinate',$sf).SetValue($null,[Device.Location.GeoCoordinate]::new(35.681236,139.767125),$null)
 $data=$a.GetType('OrbitCalendar.LiveData');$catalog=$a.GetType('OrbitCalendar.Instruments').GetField('ById',$sf).GetValue($null)
 function Assert($condition,$message){if(-not $condition){throw $message}}
@@ -58,7 +58,7 @@ try{
  $unknown=[Activator]::CreateInstance($itemType,$true);$unknown.Title='未取得路線';$unknown.Source='東急電鉄';$unknown.Url='https://example.com/';$unknown.Normal=$null
  $fixture=[Activator]::CreateInstance($feedType,$true);$fixture.Items=@($normal,$delay,$unknown);$fixture.Fetched=[DateTime]::UtcNow;$fixture.PartialFailure=$true;$pt.GetField('information',$if).SetValue($panel,$fixture)
  $pt.GetMethod('RenderInformation',$if).Invoke($panel,@($false))|Out-Null;$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Refresh();Pump 200
- Assert ($root.FindName('InformationBody').Children.Count -eq 1) 'Transit shows normal/unknown as disruptions';Assert ($root.FindName('DataStamp').Text.Contains('確認できません')) 'Missing route information silently hidden';Snapshot 'transit-example.png'
+ Assert (@($root.FindName('InformationBody').Children|Where-Object Tag -eq 'transit-disruption').Count -eq 1 -and @($root.FindName('InformationBody').Children|Where-Object Tag -eq 'transit-missing').Count -eq 1) 'Transit disruptions or unconfirmed-route notice incorrect';Assert ($root.FindName('DataStamp').Text.Contains('確認できません')) 'Missing route information silently hidden';Snapshot 'transit-example.png'
  $fixture.Items=@($normal);$fixture.PartialFailure=$false;$pt.GetMethod('RenderInformation',$if).Invoke($panel,@($false))|Out-Null;Assert ($root.FindName('InformationBody').Children.Count -eq 1 -and $root.FindName('InformationBody').Children[0].Tag -eq 'transit-clear') 'Normal service confirmation missing';Reopen 4
  Click 'SettingsButton';Pump 1800;Click 'OpenCredits';Pump 1800;Assert ($root.FindName('CreditsPicker').Visibility -eq 'Visible' -and $root.FindName('CreditLinks').Children.Count -ge 8) 'Credits inaccessible'
  Write-Output 'PASS: tab retention/persistence, removed close/footer controls, calendar temperatures, timer/hourglass particles and gauges, themed range menu and live stock/fund periods, aligned weather axes/boundaries, news images/summaries/next article, disruptions-only transit and unknown-state disclosure, settings credits'

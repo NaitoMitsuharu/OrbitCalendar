@@ -84,7 +84,7 @@ namespace OrbitCalendar
             Get<Border>("RangePicker").Visibility = Visibility.Collapsed;
             Get<Border>("CreditsPicker").Visibility = Visibility.Collapsed;
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
-            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
+            Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
             CancelPlaceSelection();
             zoomWait.Stop();
             StopRadar();

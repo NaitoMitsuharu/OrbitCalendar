@@ -56,7 +56,7 @@ namespace OrbitCalendar
                 marketTransition.Stop(); marketTransition.Refresh(); picker.Visibility = Visibility.Collapsed;
                 marketTransition.Dismiss(delegate { marketTransitionHost.Visibility = Visibility.Collapsed; picker.Opacity = 1; });
             }
-            else marketTransitionFinish.Start();
+            else { marketTransitionFinish.Interval = TimeSpan.FromSeconds(1.8 * Preferences.AnimationScale); marketTransitionFinish.Start(); }
         }
     }
 }

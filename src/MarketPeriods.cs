@@ -38,7 +38,7 @@ namespace OrbitCalendar
                 var target = e.OriginalSource as DependencyObject; var picker = Get<Border>("RangePicker"); var trigger = Get<Button>("MarketRange");
                 if (target != null && picker.Visibility == Visibility.Visible && !picker.IsAncestorOf(target) && !trigger.IsAncestorOf(target) && target != trigger) ClosePanel("RangePicker");
             };
-            Get<Button>("OpenCredits").Click += delegate { Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("CreditsPicker").Visibility = Visibility.Visible; UpdateLayout(); effect.StartArea(PanelBounds(Get<Border>("CreditsPicker")), true); };
+            Get<Button>("OpenCredits").Click += delegate { Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed; Get<Border>("CreditsPicker").Visibility = Visibility.Visible; UpdateLayout(); effect.StartArea(PanelBounds(Get<Border>("CreditsPicker")), true); };
             Get<Button>("CloseCredits").Click += delegate { ClosePanel("CreditsPicker"); };
             string[,] links = {
                 { "地図：国土地理院（色を加工）", "https://maps.gsi.go.jp/development/ichiran.html" },
