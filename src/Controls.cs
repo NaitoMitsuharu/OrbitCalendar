@@ -140,7 +140,7 @@ namespace OrbitCalendar
                 Preferences.Motion = value;
                 PreviewSetting();
             });
-            FillChoices("LoadingChoices", new[] { "6本バー", "円形スピナー", "軌道リング", "ゲーム風", "スキャン", "ドットウェーブ" }, Preferences.LoadingStyle, delegate(int value)
+            FillChoices("LoadingChoices", new[] { "6本バー", "円形スピナー", "軌道リング", "ドットキューブ", "タイル組み替え", "ドットウェーブ" }, Preferences.LoadingStyle, delegate(int value)
             {
                 Preferences.LoadingStyle = value;
                 PreviewSetting();

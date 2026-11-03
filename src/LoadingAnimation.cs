@@ -40,24 +40,58 @@ namespace OrbitCalendar
             else if (Preferences.Pattern == 2) dc.DrawRectangle(ink, null, new Rect(x - radius, y - .35, radius * 2.5, .7));
             else dc.DrawEllipse(ink, null, new Point(x, y), radius, radius);
         }
-        static void Segment(DrawingContext dc, double x, double y, double a, double b, double light)
-        {
-            int n = Math.Max(1, (int)Math.Ceiling(new Vector(a - x, b - y).Length / 2.2));
-            for (int i = 0; i <= n; i++) Dot(dc, x + (a - x) * i / n, y + (b - y) * i / n, light);
-        }
         static void Block(DrawingContext dc, double x, double y, double width, double height, double light)
         {
             for (double py = y; py < y + height; py += 2.2)
                 for (double px = x; px < x + width; px += 2.2) Dot(dc, px, py, light);
         }
-        static void Corners(DrawingContext dc)
+        static void Cube(DrawingContext dc, double phase)
         {
-            for (int side = -1; side <= 1; side += 2)
-                for (int vertical = -1; vertical <= 1; vertical += 2)
+            double yaw = phase * Math.PI / 2, pitch = -.48;
+            double cy = Math.Cos(yaw), sy = Math.Sin(yaw), cp = Math.Cos(pitch), sp = Math.Sin(pitch);
+            for (int face = 0; face < 6; face++)
+            {
+                int axis = face / 2; double side = face % 2 == 0 ? -1 : 1;
+                double nx = axis == 0 ? side : 0, ny = axis == 1 ? side : 0, nz = axis == 2 ? side : 0;
+                double normalDepth = ny * sp + (-nx * sy + nz * cy) * cp;
+                if (normalDepth <= 0) continue;
+                for (int a = 0; a <= 10; a++) for (int b = 0; b <= 10; b++)
                 {
-                    double x = 102 + side * 62, y = 55 + vertical * 30;
-                    Segment(dc, x, y, x - side * 10, y, .42); Segment(dc, x, y, x, y - vertical * 8, .42);
+                    double u = -22 + a * 4.4, v = -22 + b * 4.4;
+                    double x = axis == 0 ? side * 22 : u;
+                    double y = axis == 1 ? side * 22 : axis == 0 ? u : v;
+                    double z = axis == 2 ? side * 22 : v;
+                    double rotatedX = x * cy + z * sy, rotatedZ = -x * sy + z * cy;
+                    double rotatedY = y * cp - rotatedZ * sp, depth = y * sp + rotatedZ * cp;
+                    double perspective = 150 / (150 - depth);
+                    bool corner = (a == 0 || a == 10) && (b == 0 || b == 10);
+                    Dot(dc, 102 + rotatedX * perspective, 56 + rotatedY * perspective,
+                        .3 + normalDepth * .6, .7 + (depth + 35) * .002, corner);
                 }
+            }
+        }
+        static readonly int[] tilePath = { 8, 7, 4, 3, 0, 1, 2, 5, 4, 7, 6, 3, 4, 5, 8 };
+        static int TileGap(int step) { return tilePath[step <= 14 ? step : 28 - step]; }
+        static void Tiles(DrawingContext dc, double phase)
+        {
+            // Reverse the sliding sequence to return to the initial board without a jump.
+            double clock = Wrap(phase / 14) * 28;
+            int step = (int)clock;
+            double t = Math.Min(1, (clock - step) / .82); t = t * t * (3 - 2 * t);
+            int[] board = { 0, 1, 2, 3, 4, 5, 6, 7, -1 };
+            for (int move = 0; move < step; move++)
+            {
+                int from = TileGap(move + 1), to = TileGap(move);
+                board[to] = board[from]; board[from] = -1;
+            }
+            int moving = TileGap(step + 1), gap = TileGap(step);
+            for (int cell = 0; cell < board.Length; cell++)
+            {
+                if (board[cell] < 0) continue;
+                double col = cell % 3, row = cell / 3;
+                if (cell == moving) { col += (gap % 3 - col) * t; row += (gap / 3 - row) * t; }
+                Block(dc, 68 + col * 24, 22 + row * 24, 20, 20, cell == moving ? .98 : .48 + board[cell] % 4 * .1);
+            }
         }
         protected override void OnRender(DrawingContext dc)
         {
@@ -87,26 +121,10 @@ namespace OrbitCalendar
                     Block(dc, 99, 52, 6, 6, .8);
                     break;
                 case 3:
-                    Corners(dc);
-                    for (int i = 0; i < 12; i++)
-                    {
-                        double angle = i * Math.PI / 6 - Math.PI / 2;
-                        double light = 1 - Wrap(i / 12.0 - phase * .6);
-                        for (int length = 0; length < 5; length++) for (int width = -1; width <= 1; width++)
-                            Dot(dc, 102 + Math.Cos(angle) * (20 + length * 2.2) - Math.Sin(angle) * width * 2.2,
-                                53 + Math.Sin(angle) * (20 + length * 2.2) + Math.Cos(angle) * width * 2.2, light);
-                    }
-                    for (int i = 0; i < 9; i++) Block(dc, 62 + i * 9, 94, 5, 4, 1 - Wrap(i / 9.0 - phase * .7));
+                    Cube(dc, phase);
                     break;
                 case 4:
-                    Corners(dc);
-                    double scan = 102 + Math.Sin(phase * 2.5) * 49;
-                    for (int row = 0; row < 5; row++) for (int col = 0; col < 11; col++)
-                    {
-                        double x = 52 + col * 10, light = Math.Exp(-Math.Abs(x - scan) / 17);
-                        Block(dc, x, 32 + row * 10, 4, 4, light);
-                    }
-                    Segment(dc, scan, 30, scan, 80, 1);
+                    Tiles(dc, phase);
                     break;
                 case 5:
                     for (int i = 0; i < 6; i++)

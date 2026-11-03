@@ -59,7 +59,13 @@ try{
   $phase=$particles.Phase;Pump 250;Assert ($particles.Phase -gt $phase) ('Preview not advancing: style='+$choice+' phase='+$phase+' -> '+$particles.Phase+' timer='+$timer.IsEnabled+' visible='+$panel.IsVisible+' settings='+$picker.Visibility)
   $timer.Stop();$particles.Phase=.9;$particles.InvalidateVisual();$effect.RefreshArea($region);Pump 40
   SaveImage $root 458 ([int]$root.Height) ('loading-style-{0}.png' -f $choice)
-  $image=ParticleFrame $particles;$bytes=New-Object byte[] (204*116*4);$image.CopyPixels($bytes,204*4,0);$frames+=([Convert]::ToBase64String($bytes));$timer.Start()
+  $image=ParticleFrame $particles;$bytes=New-Object byte[] (204*116*4);$image.CopyPixels($bytes,204*4,0);$frames+=([Convert]::ToBase64String($bytes))
+  if($choice -eq 3 -or $choice -eq 4){
+   $particles.Phase=1.2;$particles.InvalidateVisual();$effect.RefreshArea($region);Pump 80
+   $next=ParticleFrame $particles;$nextBytes=New-Object byte[] (204*116*4);$next.CopyPixels($nextBytes,204*4,0)
+   Assert ([Convert]::ToBase64String($nextBytes) -ne $frames[$choice]) 'Cube or tiles do not move between frames'
+  }
+  $timer.Start()
  }
  Assert (@($frames|Select-Object -Unique).Count -eq 6) 'Loading motions render identically'
  $setting.SetValue($null,0);$load.Invoke($null,@())|Out-Null;Assert ($setting.GetValue($null) -eq 5) 'Saved selection does not reload'
@@ -88,9 +94,9 @@ try{
  # Capture the actual application renderers together for visual comparison.
  Click 'SettingsButton';Pump 1900
  $gallery=[Windows.Window]::new();$gallery.Width=618;$gallery.Height=310;$gallery.WindowStyle='None';$gallery.ResizeMode='NoResize';$gallery.ShowInTaskbar=$false;$gallery.Background=[Windows.Media.BrushConverter]::new().ConvertFromString('#0B1923')
- $grid=[Windows.Controls.Grid]::new();$grid.Width=618;$grid.Height=310
+ $grid=[Windows.Controls.Grid]::new();$grid.Width=618;$grid.Height=310;$grid.Background=$gallery.Background
  foreach($col in 0..2){$grid.ColumnDefinitions.Add([Windows.Controls.ColumnDefinition]::new())};foreach($row in 0..1){$grid.RowDefinitions.Add([Windows.Controls.RowDefinition]::new())}
- $names=@('6本バー','円形スピナー','軌道リング','ゲーム風','スキャン','ドットウェーブ');$renderers=@()
+ $names=@('6本バー','円形スピナー','軌道リング','ドットキューブ','タイル組み替え','ドットウェーブ');$renderers=@()
  # Each instance is rendered separately with the selected design before assembling the gallery.
  $images=@();foreach($index in 0..5){
   $cell=[Windows.Controls.StackPanel]::new();$cell.Margin=[Windows.Thickness]::new(0,5,0,5)
