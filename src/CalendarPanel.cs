@@ -61,7 +61,7 @@ namespace OrbitCalendar
             InitializeControls();
             PreviewMouseWheel += delegate(object sender, MouseWheelEventArgs e)
             {
-                if (mode != 0 || IsClosing) return;
+                if (mode != 0 || IsClosing || Get<Border>("MarketPicker").Visibility == Visibility.Visible || Get<Border>("SettingsPicker").Visibility == Visibility.Visible) return;
                 wheelDelta += e.Delta;
                 int months = wheelDelta / 120;
                 wheelDelta %= 120;
@@ -79,7 +79,9 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (e.Key == Key.Escape && selectingPlace) { CancelPlaceSelection(); effect.Refresh(); }
+            if (e.Key == Key.Escape && Get<Border>("MarketPicker").Visibility == Visibility.Visible) CloseMarketSettings();
+            else if (Get<Border>("MarketPicker").Visibility == Visibility.Visible) return;
+            else if (e.Key == Key.Escape && selectingPlace) { CancelPlaceSelection(); effect.Refresh(); }
             else if (e.Key == Key.Escape && Get<Border>("SettingsPicker").Visibility == Visibility.Visible)
             {
                 ClosePanel("SettingsPicker");
@@ -209,6 +211,7 @@ namespace OrbitCalendar
         public void Collapse()
         {
             if (!IsVisible || IsClosing) return;
+            CloseMarketSettings();
             if (loading != null) loading.Cancel();
             CancelPlaceSelection();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;

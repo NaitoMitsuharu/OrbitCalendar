@@ -45,7 +45,13 @@ namespace OrbitCalendar
             int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
             if (w <= 0 || h <= 0) return new Grain[0];
             var frame = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-            frame.Render(face);
+            // Capture in local coordinates, independent of the source panel's
+            // cached parent layout and clipping (notably ScrollViewer updates).
+            var visual = new DrawingVisual();
+            using (var drawing = visual.RenderOpen())
+                drawing.DrawRectangle(new VisualBrush(face) { ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, w, h),
+                    ViewportUnits = BrushMappingMode.Absolute, Viewport = new Rect(0, 0, w, h), Stretch = Stretch.Fill }, null, new Rect(0, 0, w, h));
+            frame.Render(visual);
             var pixels = new byte[frame.PixelWidth * frame.PixelHeight * 4];
             frame.CopyPixels(pixels, frame.PixelWidth * 4, 0);
             var dots = new List<Grain>();

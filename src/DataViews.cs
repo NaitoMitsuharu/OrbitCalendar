@@ -31,6 +31,7 @@ namespace OrbitCalendar
             tabs[0].Background = activeTab;
             InitializeMapInteraction();
             InitializePlacePicker();
+            InitializeMarketSettings();
             radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
             radarPlayback.Tick += delegate
             {
@@ -59,8 +60,7 @@ namespace OrbitCalendar
             Get<Button>("RefreshData").Click += delegate { LoadView(true); };
             Get<Button>("DataSource").Click += delegate
             {
-                string url = mode == 1 && choice[1] == 4 ? "https://emaxis.am.mufg.jp/fund/253425.html" : mode == 1 ? "https://finance.yahoo.com/quote/" + Uri.EscapeDataString(LiveData.Symbols[choice[1]]) + "/" :
-                    "https://www.jma.go.jp/bosai/nowc/";
+                string url = mode == 1 && SelectedMarket != null ? SelectedMarket.SourceUrl : "https://www.jma.go.jp/bosai/nowc/";
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             };
             IsVisibleChanged += delegate { if (!IsVisible && loading != null) loading.Cancel(); };
@@ -70,6 +70,7 @@ namespace OrbitCalendar
 
         void SwitchView(int value)
         {
+            CloseMarketSettings();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
             CancelPlaceSelection();
@@ -95,18 +96,22 @@ namespace OrbitCalendar
             var requestedViewport = mapViewport;
             var previousWeather = activeWeather;
             bool market = mode == 1;
+            var instrument = market ? SelectedMarket : null;
+            Get<ScrollViewer>("MarketScroll").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
+            Get<Button>("ManageMarkets").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
+            Get<StackPanel>("RegionChoices").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             Get<Button>("PickPlace").IsEnabled = false;
             Get<TextBlock>("MapHint").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             Get<StackPanel>("MapTools").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             Get<Button>("AutoPlace").Visibility = SavedPlace.Coordinate == null ? Visibility.Collapsed : Visibility.Visible;
             Get<Canvas>("Plot").Height = market ? 220 : LiveData.MapHeight + 6;
             Get<StackPanel>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
-            var names = market ? LiveData.MarketNames : LiveData.Regions;
+            var names = LiveData.Regions;
             var stamp = Get<TextBlock>("DataStamp");
             var refresh = Get<Button>("RefreshData");
             try
             {
-                for (int i = 0; i < choices.Length; i++)
+                for (int i = 0; !market && i < choices.Length; i++)
                 {
                     choices[i].Visibility = i < names.Length ? Visibility.Visible : Visibility.Collapsed;
                     if (i >= names.Length) continue;
@@ -114,9 +119,19 @@ namespace OrbitCalendar
                     choices[i].Background = i == index ? activeTab : Brushes.Transparent;
                 }
                 Get<TextBlock>("SectionLabel").Text = market ? "MARKET   /   3 MONTHS" : "WEATHER   /   PRECIPITATION";
-                Get<Button>("DataSource").Content = market ? (index == 4 ? "三菱UFJアセットマネジメント  ↗" : "Yahoo Finance  ↗") : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
+                Get<Button>("DataSource").IsEnabled = !market || instrument != null;
+                Get<Button>("DataSource").Content = market ? (instrument != null && instrument.Provider == "mufg" ? "三菱UFJアセットマネジメント  ↗" : instrument != null && instrument.Supported ? "Yahoo Finance  ↗" : "投資信託の名簿（価格取得未対応） ↗") : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
                 LiveData.View view;
-                saved.TryGetValue(key, out view);
+                if (market && (instrument == null || !instrument.Supported))
+                {
+                    Get<Canvas>("Plot").Children.Clear();
+                    Get<TextBlock>("DataTitle").Text = instrument == null ? "銘柄を追加してください" : instrument.Label;
+                    stamp.Text = instrument == null ? "＋ または設定 → 銘柄の管理" : "価格取得未対応 · 登録のみ";
+                    Get<TextBlock>("PlotCaption").Text = instrument == null ? "初期表示は日経平均とドル円です" : "この運用会社の基準価額には未対応です";
+                    refresh.IsEnabled = false; nextUpdate = DateTime.UtcNow.AddHours(1);
+                    effect.Start(true); return;
+                }
+                if (market) marketSaved.TryGetValue(instrument.Id, out view); else saved.TryGetValue(key, out view);
                 bool fetch = force || requestedViewport != null || view == null || DateTime.UtcNow - view.Fetched >= TimeSpan.FromMinutes(5);
                 if (view != null && requestedViewport == null) ShowData(view);
                 else if (requestedViewport != null && previousWeather != null) ShowData(previousWeather);
@@ -127,7 +142,7 @@ namespace OrbitCalendar
                     Get<Button>("RadarPlay").IsEnabled = false;
                     Get<Slider>("RadarTime").IsEnabled = false;
                     Get<Canvas>("Plot").Children.Clear();
-                    Get<TextBlock>("DataTitle").Text = names[index];
+                    Get<TextBlock>("DataTitle").Text = market ? instrument.Label : names[index];
                     Get<TextBlock>("PlotCaption").Text = "";
                 }
                 if (fetch)
@@ -139,9 +154,10 @@ namespace OrbitCalendar
                 effect.Start(true);
                 if (fetch)
                 {
-                    view = market ? await LiveData.Market(index, request.Token) : await LiveData.Weather(index, request.Token, requestedViewport);
+                    view = market ? await LiveData.Market(instrument, request.Token) : await LiveData.Weather(index, request.Token, requestedViewport);
                     if (request.IsCancellationRequested) return;
-                    if (market || requestedViewport == null) saved[key] = view;
+                    if (market) { marketSaved[instrument.Id] = view; Watchlist.Confirm(instrument); }
+                    else if (requestedViewport == null) saved[key] = view;
                     ShowData(view);
                     UpdateLayout();
                     effect.Start(true);
@@ -152,7 +168,8 @@ namespace OrbitCalendar
             {
                 if (request.IsCancellationRequested) return;
                 LiveData.View previous;
-                stamp.Text = saved.TryGetValue(key, out previous) ? previous.Stamp + "  ·  更新失敗" : "取得できませんでした。「更新」で再試行";
+                bool hasPrevious = market ? marketSaved.TryGetValue(instrument.Id, out previous) : saved.TryGetValue(key, out previous);
+                stamp.Text = hasPrevious ? previous.Stamp + "  ·  更新失敗" : "取得失敗 · 配信対象外または通信エラー。更新で再試行";
                 if (!market && requestedViewport != null && previousWeather != null)
                 {
                     mapViewport = previousWeather.Viewport;
@@ -166,12 +183,22 @@ namespace OrbitCalendar
                 if (loading == request)
                 {
                     loading = null;
-                    refresh.IsEnabled = true;
+                    refresh.IsEnabled = !market || instrument != null && instrument.Supported;
                     Get<Button>("PickPlace").IsEnabled = mode == 2 && activeWeather != null;
-                    if (mode != 0 && IsVisible) effect.Refresh();
+                    if (mode != 0 && IsVisible)
+                    {
+                        effect.Refresh();
+                        RefreshViewAfterLayout();
+                    }
                 }
                 request.Dispose();
             }
+        }
+
+        void RefreshViewAfterLayout()
+        {
+            Dispatcher.BeginInvoke(new Action(delegate { if (IsVisible && !IsClosing) effect.Refresh(); }),
+                System.Windows.Threading.DispatcherPriority.ContextIdle);
         }
 
         void StopRadar()
@@ -235,7 +262,7 @@ namespace OrbitCalendar
             }
             var bars = view.Bars;
             double low = bars.Min(b => b.Low), high = bars.Max(b => b.High);
-            double span = Math.Max(high - low, 1);
+            double span = Math.Max(high - low, .01);
             Func<double, double> y = v => 207 - 185 * (v - low) / span;
             var faint = Art.Ink("#4A717E");
             for (int i = 0; i <= 4; i++)
@@ -243,7 +270,7 @@ namespace OrbitCalendar
                 double price = low + span * i / 4;
                 double lineY = y(price);
                 plot.Children.Add(new Line { X1 = 0, X2 = 348, Y1 = lineY, Y2 = lineY, Stroke = faint });
-                var label = new TextBlock { Text = price.ToString("#,##0"), Foreground = Art.Ink("#A9CAD6"), FontSize = 12 };
+                var label = new TextBlock { Text = price.ToString(high < 1000 ? "#,##0.00" : "#,##0"), Foreground = Art.Ink("#A9CAD6"), FontSize = 12 };
                 Canvas.SetLeft(label, 354); Canvas.SetTop(label, lineY - 8); plot.Children.Add(label);
             }
             if (view.IsFund)

@@ -82,8 +82,6 @@ namespace OrbitCalendar
             public DateTime Fetched = DateTime.UtcNow;
         }
 
-        public static readonly string[] MarketNames = { "日経平均", "トヨタ", "ソニー", "S&P 500", "オルカン" };
-        public static readonly string[] Symbols = { "^N225", "7203.T", "6758.T", "^GSPC", "0331418A" };
         public static string[] Regions
         {
             get { return new[] { SavedPlace.Coordinate == null ? "現在地" : "保存地点", "日本広域", "関東", "関西" }; }
@@ -106,10 +104,11 @@ namespace OrbitCalendar
             return new JavaScriptSerializer().Deserialize<T>(System.Text.Encoding.UTF8.GetString(bytes));
         }
 
-        public static async Task<View> Market(int index, CancellationToken token)
+        public static async Task<View> Market(Instrument item, CancellationToken token)
         {
-            if (index == 4) return await AllCountry(token).ConfigureAwait(false);
-            string symbol = Symbols[index];
+            if (!item.Supported) throw new NotSupportedException();
+            if (item.Provider == "mufg") return await Fund(item, token).ConfigureAwait(false);
+            string symbol = item.Key;
             var data = await Json<Finance>("https://query1.finance.yahoo.com/v8/finance/chart/" +
                 Uri.EscapeDataString(symbol) + "?interval=1d&range=3mo", token).ConfigureAwait(false);
             var s = data.chart.result[0];
@@ -125,14 +124,14 @@ namespace OrbitCalendar
             if (bars.Count < 2) throw new InvalidDataException();
             var last = bars[bars.Count - 1];
             var change = last.Close - bars[bars.Count - 2].Close;
-            return new View { Bars = bars, Heading = MarketNames[index] + "   " + last.Close.ToString("#,##0.##") + (index == 3 ? " pt" : " 円"),
-                Stamp = last.Day.ToString("yyyy/MM/dd") + " 日足  ·  前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + (index == 3 ? " pt" : " 円"),
+            return new View { Bars = bars, Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + (" " + item.Unit),
+                Stamp = last.Day.ToString("yyyy/MM/dd") + " 日足  ·  前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + (" " + item.Unit),
                 Caption = bars[0].Day.ToString("MM/dd") + "  —  " + last.Day.ToString("MM/dd") + "     緑：上昇   赤：下落" };
         }
 
-        static async Task<View> AllCountry(CancellationToken token)
+        static async Task<View> Fund(Instrument item, CancellationToken token)
         {
-            var bytes = await Get("https://www.am.mufg.jp/fund_file/setteirai/253425.csv", token).ConfigureAwait(false);
+            var bytes = await Get("https://www.am.mufg.jp/fund_file/setteirai/" + item.Key + ".csv", token).ConfigureAwait(false);
             var bars = new List<Candle>();
             using (var reader = new StringReader(System.Text.Encoding.GetEncoding(932).GetString(bytes)))
             {
@@ -151,9 +150,10 @@ namespace OrbitCalendar
             var last = bars[bars.Count - 1];
             double change = last.Close - bars[bars.Count - 2].Close;
             bars = bars.Where(v => v.Day >= last.Day.AddMonths(-3)).ToList();
-            return new View { IsFund = true, Bars = bars, Heading = "オルカン   " + last.Close.ToString("#,##0") + " 円",
+            if (bars.Count < 2) throw new InvalidDataException();
+            return new View { IsFund = true, Bars = bars, Heading = item.Label + "   " + last.Close.ToString("#,##0") + " 円",
                 Stamp = last.Day.ToString("yyyy/MM/dd") + "  基準価額（1万口）",
-                Caption = "eMAXIS Slim 全世界株式  前日比 " + change.ToString("+#,##0;-#,##0;0") + " 円" };
+                Caption = "前日比 " + change.ToString("+#,##0;-#,##0;0") + " 円" };
         }
 
         public class Viewport

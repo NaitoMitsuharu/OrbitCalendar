@@ -44,6 +44,7 @@ namespace OrbitCalendar
             Closed += delegate { outside.Dispose(); };
             Get<Button>("TimerDuration").Click += delegate
             {
+                CloseMarketSettings();
                 CancelPlaceSelection();
                 var picker = Get<Border>("TimerPicker");
                 Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
@@ -92,6 +93,7 @@ namespace OrbitCalendar
             };
             Get<Button>("SettingsButton").Click += delegate
             {
+                if (Get<Border>("MarketPicker").Visibility == Visibility.Visible) { CloseMarketSettings(); return; }
                 CancelPlaceSelection();
                 Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
                 var picker = Get<Border>("SettingsPicker");
