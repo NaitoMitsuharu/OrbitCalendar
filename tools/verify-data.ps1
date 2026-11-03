@@ -6,6 +6,7 @@ Add-Type -AssemblyName WindowsBase,PresentationCore,PresentationFramework,System
 $a=[Reflection.Assembly]::LoadFrom((Resolve-Path build/OrbitCalendar.exe))
 $sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
 $folder=Join-Path $env:TEMP ('orbit-data-qa-'+[guid]::NewGuid());New-Item -ItemType Directory $folder|Out-Null
+$prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0)
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'))
 $watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
 $catalog=$a.GetType('OrbitCalendar.Instruments').GetField('ById',$sf).GetValue($null)
@@ -90,10 +91,10 @@ $panel=[Activator]::CreateInstance($a.GetType('OrbitCalendar.CalendarPanel'),[ob
 function Snapshot($name){$im=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,[int]$root.Height,96,96,[Windows.Media.PixelFormats]::Pbgra32);$im.Render($root);$e=[Windows.Media.Imaging.PngBitmapEncoder]::new();$e.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($im));$s=[IO.File]::Create((Join-Path $folder $name));try{$e.Save($s)}finally{$s.Dispose()}}
 try {
     $panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 1800
-    $root.Height=642;$panel.Height=642;$pt.GetField('mode',$if).SetValue($panel,2);$root.FindName('CalendarBody').Visibility='Collapsed';$root.FindName('DataBody').Visibility='Visible'
+    $pt.GetField('mode',$if).SetValue($panel,2);$root.Height=$panel.PreferredHeight;$panel.Height=$panel.PreferredHeight;$root.FindName('DataSource').Visibility='Collapsed';$root.FindName('CalendarBody').Visibility='Collapsed';$root.FindName('DataBody').Visibility='Visible'
     foreach($name in @('MapTools','RadarControls')){$root.FindName($name).Visibility='Visible'}
     foreach($name in @('MapHint','RadarRange')){$root.FindName($name).Visibility='Visible'}
-    $root.FindName('Plot').Height=196;$root.FindName('SectionLabel').Text='WEATHER   /   PRECIPITATION'
+    $root.FindName('Plot').Height=190;$root.FindName('Plot').Width=356;$root.FindName('SectionLabel').Text='WEATHER   /   PRECIPITATION'
     $root.FindName('WeatherTab').Background=[Windows.Media.BrushConverter]::new().ConvertFromString('#296675');$root.FindName('CalendarTab').Background=[Windows.Media.Brushes]::Transparent
     $regions=@('現在地','日本広域','関東','関西');for($i=0;$i -lt 5;$i++){$b=$root.FindName('Choice'+$i);if($i -lt 4){$b.Content=$regions[$i]}else{$b.Visibility='Collapsed'}}
     $pt.GetMethod('ShowData',$if).Invoke($panel,@($weather))|Out-Null;$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Start($true);Pump 1900

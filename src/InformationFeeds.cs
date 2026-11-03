@@ -13,11 +13,14 @@ using System.Xml;
 
 namespace OrbitCalendar
 {
-    internal static class InformationFeeds
+    internal static partial class InformationFeeds
     {
         internal class Item
         {
             public string Title, Detail, Source, Url;
+            public string Description = "", ImageUrl = "";
+            public System.Windows.Media.Imaging.BitmapSource Picture;
+            public bool DetailsLoaded;
             public DateTimeOffset? Published;
             public bool? Normal;
         }
@@ -59,7 +62,7 @@ namespace OrbitCalendar
                 if (stamp.Length == 0) stamp = text("date");
                 DateTimeOffset date;
                 if (title.Length == 0 || !SafeUrl(url)) continue;
-                result.Add(new Item { Title = title, Url = url, Source = source,
+                result.Add(new Item { Title = title, Url = url, Source = source, Description = Short(Plain(text("description"))),
                     Published = DateTimeOffset.TryParse(stamp, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out date) ? date : (DateTimeOffset?)null });
             }
             return result.GroupBy(i => i.Url).Select(g => g.First()).Take(80).ToArray();

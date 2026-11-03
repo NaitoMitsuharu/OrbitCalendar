@@ -28,7 +28,7 @@ namespace OrbitCalendar
         {
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", false);
             SetVisible("WeatherSwitch", mode == 2); SetVisible("Plot", true); SetVisible("TemperaturePlot", mode == 2);
-            SetVisible("DataChoices", true); SetVisible("DataSource", true);
+            SetVisible("DataChoices", true); SetVisible("MarketRange", mode == 1); SetVisible("DataSource", false);
             Get<Button>("RainMode").Background = activeTab; Get<Button>("DailyMode").Background = Brushes.Transparent;
         }
         async Task<LiveData.WeatherForecast> TryForecast(CancellationToken token, bool force)
@@ -43,9 +43,10 @@ namespace OrbitCalendar
             StopRadar();
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", true); SetVisible("WeatherSwitch", true);
             foreach (string name in new[] { "Plot", "TemperaturePlot", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
-            SetVisible("DataChoices", true); SetVisible("RegionChoices", false); SetVisible("DataSource", true);
+            SetVisible("DataChoices", true); SetVisible("RegionChoices", false); SetVisible("DataSource", false);
             Get<Button>("RainMode").Background = Brushes.Transparent; Get<Button>("DailyMode").Background = activeTab;
-            Get<TextBlock>("SectionLabel").Text = "WEATHER   /   3 DAYS";
+            Get<TextBlock>("SectionLabel").Text = "WEATHER";
+            SetVisible("MarketRange", false);
             Get<TextBlock>("DataTitle").Text = "今日・明日・明後日";
             Get<TextBlock>("DataStamp").Text = "基準地点の予報を取得中…";
             Get<Button>("DataSource").Content = "Open-Meteo ↗ · 予報は随時変わります";
@@ -133,18 +134,17 @@ namespace OrbitCalendar
             var f = weatherForecast;
             if (f == null || !f.Temperature(radarOrigin).HasValue || !f.Temperature(radarOrigin.AddMinutes(Get<Slider>("RadarTime").Maximum)).HasValue)
             {
-                plot.Children.Add(WeatherText("気温を取得できません · 雨雲は再生できます", 12, "#92B5BE")); return;
+                plot.Children.Add(WeatherText("気温を取得できません", 12, "#92B5BE")); return;
             }
             double maximum = Get<Slider>("RadarTime").Maximum;
             var temperatures = Enumerable.Range(0, 61).Select(i => f.Temperature(radarOrigin.AddMinutes(maximum * i / 60)).Value).ToArray();
             temperatureLow = temperatures.Min() - .5; temperatureHigh = temperatures.Max() + .5;
             var line = new Polyline { Stroke = Art.Ink("#F4B09F"), StrokeThickness = 1.6 };
-            for (int i = 0; i < temperatures.Length; i++) line.Points.Add(new Point(46 + 300.0 * i / 60, TemperatureY(temperatures[i])));
+            for (int i = 0; i < temperatures.Length; i++) line.Points.Add(new Point(LiveData.MapWidth * i / 60.0, TemperatureY(temperatures[i])));
             plot.Children.Add(line);
-            var label = WeatherText(f.Place + " · 気温 °C（時間別予報を補間）", 10, "#92B5BE"); Canvas.SetTop(label, 49); plot.Children.Add(label);
             temperatureCursor = new Line { Y1 = 0, Y2 = 46, Stroke = Art.Ink("#7CB6BE"), StrokeThickness = 1 };
             temperatureDot = new Ellipse { Width = 6, Height = 6, Fill = Art.Ink("#FFE18B") };
-            temperatureValue = WeatherText("", 16, "#F4DD8E"); Canvas.SetTop(temperatureValue, 11);
+            temperatureValue = WeatherText("", 14, "#F4DD8E"); Canvas.SetTop(temperatureValue, 11); Canvas.SetLeft(temperatureValue, LiveData.MapWidth + 7);
             plot.Children.Add(temperatureCursor); plot.Children.Add(temperatureDot); plot.Children.Add(temperatureValue);
             UpdateTemperature(Get<Slider>("RadarTime").Value);
         }
@@ -154,10 +154,10 @@ namespace OrbitCalendar
             if (temperatureCursor == null || weatherForecast == null) return;
             var v = weatherForecast.Temperature(radarOrigin.AddMinutes(minute));
             if (!v.HasValue) return;
-            double x = 46 + 300 * minute / Math.Max(1, Get<Slider>("RadarTime").Maximum);
+            double x = LiveData.MapWidth * minute / Math.Max(1, Get<Slider>("RadarTime").Maximum);
             temperatureCursor.X1 = temperatureCursor.X2 = x;
             Canvas.SetLeft(temperatureDot, x - 3); Canvas.SetTop(temperatureDot, TemperatureY(v.Value) - 3);
-            temperatureValue.Text = v.Value.ToString("0.0") + "°";
+            temperatureValue.Text = v.Value.ToString("0.0") + "°C";
         }
     }
 }

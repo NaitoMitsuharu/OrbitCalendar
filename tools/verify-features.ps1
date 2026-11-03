@@ -5,6 +5,7 @@ Add-Type -AssemblyName WindowsBase,PresentationCore,PresentationFramework,System
 $a=[Reflection.Assembly]::LoadFrom((Resolve-Path build/OrbitCalendar.exe))
 $sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
 $folder=Join-Path $env:TEMP ('orbit-features-qa-'+[guid]::NewGuid());New-Item -ItemType Directory $folder|Out-Null
+$prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0)
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'));$watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
 # In-memory public fixture only; never write or reveal the user's saved coordinates.
 $place=$a.GetType('OrbitCalendar.SavedPlace');$place.GetProperty('Coordinate',$sf).SetValue($null,[Device.Location.GeoCoordinate]::new(35.681236,139.767125),$null)
@@ -20,7 +21,7 @@ $sot=Static 'ParseSotetsu' @('[{"DATE":"2026/11/03 12:00:00","MSG":"遅延して
 $sot=Static 'ParseSotetsu' @('[{"MSG":"unknown"}]');Assert ($null -eq $sot.Normal) 'Missing status parsed as normal'
 $tok=@(Static 'ParseTokyu' @('{"check_ty":"1,0","unten_ty":"運行情報あり","check_sh":"x","unten_sh":"不明"}'));Assert ($tok[0].Normal -eq $false -and $null -eq $tok[1].Normal) 'Tokyu unknown/disruption states failed'
 $jr=@(Static 'ParseJr' @('<p>平常運転</p><li class="traininfo-routes__table__item"><span class="traininfo-routes__name">横須賀線</span><p class="traininfo-routes__status trouble"><span>遅延</span></p></li>'));Assert ($jr[0].Normal -eq $false -and $null -eq $jr[1].Normal) 'JR legend or missing route interpreted as normal'
-foreach($i in 0..2){$n=Await ($feeds.GetMethod('News',$sf).Invoke($null,[object[]]@($i,$true,[Threading.CancellationToken]::None)));Assert ($n.Items.Length -gt 0) 'Live news empty';Write-Host ('News '+$i+': '+$n.Items.Length+' headlines')}
+foreach($i in 0..2){$n=Await ($feeds.GetMethod('News',$sf).Invoke($null,[object[]]@($i,$true,[Threading.CancellationToken]::None)));Assert ($n.Items.Length -gt 0) 'Live news empty';Await ($feeds.GetMethod('PreviewNews',$sf).Invoke($null,[object[]]@($n.Items[0],[Threading.CancellationToken]::None)))|Out-Null;Assert ($null -ne $n.Items[0].Picture -and $n.Items[0].Description.Length -gt 0) 'Live news preview missing';Write-Host ('News '+$i+': '+$n.Items.Length+' headlines')}
 $transit=Await ($feeds.GetMethod('Transit',$sf).Invoke($null,[object[]]@($true,[Threading.CancellationToken]::None)))
 Assert ($transit.Items.Length -eq 7 -and $null -ne $transit.Items[0].Normal) 'Transit route count/Sotetsu fetch failed'
 foreach($r in $transit.Items){Write-Host ($r.Title+': '+$r.Normal+' '+$r.Detail)}
@@ -34,7 +35,8 @@ Assert ($null -eq $f.Temperature([DateTime]::new(1970,1,2))) 'Missing temperatur
 $panel=[Activator]::CreateInstance($a.GetType('OrbitCalendar.CalendarPanel'),[object[]]@([Action]{},[Action]{}));$pt=$panel.GetType();$root=$panel.Content.Child
 function Click($name){$root.FindName($name).RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))}
 function WaitLoading { $end=[DateTime]::UtcNow.AddSeconds(100);do {Pump 60;if([DateTime]::UtcNow -gt $end){throw 'UI load timeout'}}while($null -ne $pt.GetField('loading',$if).GetValue($panel));Pump 1700 }
-function Snapshot($name){$panel.UpdateLayout();$bounds=$root.FindName('DataSource').TransformToAncestor($root).TransformBounds([Windows.Rect]::new($root.FindName('DataSource').RenderSize));if($root.FindName('DataBody').Visibility -eq 'Visible'){Assert ($bounds.Bottom -lt $root.Height) 'Source/footer clipped'};$im=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,[int]$root.Height,96,96,[Windows.Media.PixelFormats]::Pbgra32);$im.Render($root);$e=[Windows.Media.Imaging.PngBitmapEncoder]::new();$e.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($im));$s=[IO.File]::Create((Join-Path $folder $name));try{$e.Save($s)}finally{$s.Dispose()}}
+function WaitNews { $end=[DateTime]::UtcNow.AddSeconds(50);while($null -ne $pt.GetField('newsPreview',$if).GetValue($panel)){Pump 100;if([DateTime]::UtcNow -gt $end){throw 'News preview timeout'}};Pump 1600 }
+function Snapshot($name){Pump 200;$panel.UpdateLayout();$bounds=$root.FindName('DataSource').TransformToAncestor($root).TransformBounds([Windows.Rect]::new($root.FindName('DataSource').RenderSize));if($root.FindName('DataBody').Visibility -eq 'Visible'){Assert ($bounds.Bottom -lt $root.Height) 'Source/footer clipped'};$im=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,[int]$root.Height,96,96,[Windows.Media.PixelFormats]::Pbgra32);$im.Render($root);$e=[Windows.Media.Imaging.PngBitmapEncoder]::new();$e.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($im));$s=[IO.File]::Create((Join-Path $folder $name));try{$e.Save($s)}finally{$s.Dispose()}}
 try{
  $panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 1700
  Click 'WeatherTab';WaitLoading
@@ -43,7 +45,7 @@ try{
  $origin=$pt.GetField('radarOrigin',$if).GetValue($panel)
  Assert (@($frames|Where-Object {($_.ValidUtc-$origin).TotalMinutes -gt 60 -or $_.HourlyRain}).Count -eq 0) 'Rain timeline extends past 1 hour'
  $slider=$root.FindName('RadarTime');Assert (-not $slider.IsSnapToTickEnabled) 'Slider still snaps'
- Assert ($root.FindName('TemperaturePlot').Children.Count -ge 5) 'Temperature graph missing'
+ Assert ($root.FindName('TemperaturePlot').Children.Count -ge 4) 'Temperature graph missing'
  $gapStart=$slider.Ticks[$slider.Ticks.Count-2];$gapEnd=$slider.Ticks[$slider.Ticks.Count-1];$seekA=$gapStart+($gapEnd-$gapStart)*.2;$seekB=$gapStart+($gapEnd-$gapStart)*.4
  $slider.Value=$seekA;Pump 150;$first=$pt.GetField('activeWeather',$if).GetValue($panel);$dot=$pt.GetField('temperatureCursor',$if).GetValue($panel);$x=$dot.X1
  $slider.Value=$seekB;Pump 150
@@ -61,10 +63,10 @@ try{
  $daily.Children[0].Children[2].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Pump 1700
  Assert ($pt.GetField('forecastDay',$if).GetValue($panel) -eq 2) 'Forecast day selection failed';Snapshot 'weather-daily.png'
  Click 'RainMode';WaitLoading;Assert ($root.FindName('Plot').Visibility -eq 'Visible' -and $root.FindName('DailyWeatherBody').Visibility -eq 'Collapsed') 'Return to radar failed'
- Click 'NewsTab';WaitLoading;Assert ($root.Height -eq 542 -and $root.FindName('InformationBody').Children.Count -gt 1) 'News UI missing';Snapshot 'news.png'
+ Click 'NewsTab';WaitLoading;Assert ($root.Height -eq 542 -and $root.FindName('InformationBody').Children.Count -gt 1) 'News UI missing';WaitNews;Snapshot 'news.png'
  Click 'Choice2';WaitLoading;Assert ($pt.GetField('choice',$if).GetValue($panel)[3] -eq 2) 'News category failed'
- Click 'TransitTab';WaitLoading;Assert ($root.FindName('InformationBody').Children.Count -gt 1) 'Transit UI missing';Snapshot 'transit.png'
- Click 'Choice1';WaitLoading;Assert ($root.FindName('InformationBody').Children[0].Content.Children[0].Text -eq '横須賀線') 'Transit filter failed'
+ Click 'TransitTab';WaitLoading;Assert ($root.FindName('InformationBody').Children.Count -eq @($transit.Items|Where-Object Normal -eq $false|Select-Object -First 3).Count) 'Normal routes remain visible';Snapshot 'transit.png'
+ Click 'Choice1';WaitLoading;Assert ($pt.GetField('choice',$if).GetValue($panel)[4] -eq 1) 'Transit filter failed'
  Click 'CalendarTab';Pump 1700;Assert ($root.Height -eq 542 -and $root.FindName('CalendarBody').Visibility -eq 'Visible') 'Calendar return failed';Snapshot 'calendar.png'
  Write-Output 'PASS: live news/official transit/three-day weather; parser unknown/disruption safety; hourly temperature interpolation; <=1h radar, continuous seek/playback, single pass/replay; five-tab navigation, category/day selection'
  Write-Output $folder

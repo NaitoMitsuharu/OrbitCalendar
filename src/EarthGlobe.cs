@@ -31,7 +31,7 @@ namespace OrbitCalendar
 
         protected override void OnRender(DrawingContext dc)
         {
-            const double radius = 43, cx = 368, cy = 50;
+            const double radius = 43, cx = 244, cy = 50;
             foreach (var dot in dots)
             {
                 double longitude = dot.Longitude - 2.15 + Rotation;

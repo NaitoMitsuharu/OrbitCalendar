@@ -146,8 +146,8 @@ namespace OrbitCalendar
                 {
                     double angle = grains[i].Longitude;
                     double spread = Math.Sqrt(-2 * Math.Log(Math.Max(1e-9, random.NextDouble()))) * 28;
-                    grains[i].Origin = new Point(grains[i].Target.X * .28 + 420 * .72 + Math.Cos(angle) * spread,
-                        grains[i].Target.Y * .28 + 535 * .72 + Math.Sin(angle) * spread);
+                    grains[i].Origin = new Point(grains[i].Target.X * .28 + (face.RenderSize.Width - 38) * .72 + Math.Cos(angle) * spread,
+                        grains[i].Target.Y * .28 + (face.RenderSize.Height - 7) * .72 + Math.Sin(angle) * spread);
                 }
                 if (area.Width < face.RenderSize.Width && !morph)
                     grains[i].Origin = new Point(area.Right - 8 - random.NextDouble() * Math.Min(65, area.Width),

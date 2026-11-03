@@ -11,6 +11,7 @@ $folder = Join-Path $env:TEMP ('orbit-market-qa-' + [guid]::NewGuid())
 New-Item -ItemType Directory $folder | Out-Null
 $watch.GetField('path', $static).SetValue($null, (Join-Path $folder 'watchlist.json'))
 $watch.GetMethod('Reload', $static).Invoke($null, @()) | Out-Null
+$prefs=$assembly.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$static).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$static).SetValue($null,0)
 $items = $watch.GetField('Items', $static).GetValue($null)
 function Assert($condition, $message) { if (-not $condition) { throw $message } }
 function Search($query, [int]$filter = 0) { $catalog.GetMethod('Search', $static).Invoke($null, [object[]]@($query,$filter)) }

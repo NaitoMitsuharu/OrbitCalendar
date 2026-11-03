@@ -91,7 +91,7 @@ namespace OrbitCalendar
         {
             get { return new[] { SavedPlace.Coordinate == null ? "現在地" : "保存地点", "日本広域", "関東", "関西" }; }
         }
-        public const int MapWidth = 414, MapHeight = 190;
+        public const int MapWidth = 356, MapHeight = 190;
 
         internal static async Task<byte[]> Get(string url, CancellationToken token, bool missingAllowed = false)
         {
@@ -109,14 +109,19 @@ namespace OrbitCalendar
             return new JavaScriptSerializer().Deserialize<T>(System.Text.Encoding.UTF8.GetString(bytes));
         }
 
-        public static async Task<View> Market(Instrument item, CancellationToken token)
+        public static Task<View> Market(Instrument item, CancellationToken token) { return MarketPeriod(item, 3, token); }
+
+        public static async Task<View> MarketPeriod(Instrument item, int months, CancellationToken token)
         {
+            if (months != 1 && months != 3 && months != 6 && months != 12 && months != 60) throw new ArgumentOutOfRangeException("months");
             if (!item.Supported) throw new NotSupportedException();
-            if (item.Provider == "mufg") return await Fund(item, token).ConfigureAwait(false);
-            if (item.Provider == "sbi") return await FundPrices.Sbi(item, token).ConfigureAwait(false);
+            if (item.Provider == "mufg") return await FundPeriod(item, months, token).ConfigureAwait(false);
+            if (item.Provider == "sbi") return await FundPrices.SbiPeriod(item, months, token).ConfigureAwait(false);
             string symbol = item.Key;
+            string range = months < 12 ? months + "mo" : months / 12 + "y";
+            string interval = months > 12 ? "1wk" : "1d";
             var data = await Json<Finance>("https://query1.finance.yahoo.com/v8/finance/chart/" +
-                Uri.EscapeDataString(symbol) + "?interval=1d&range=3mo", token).ConfigureAwait(false);
+                Uri.EscapeDataString(symbol) + "?interval=" + interval + "&range=" + range, token).ConfigureAwait(false);
             var s = data.chart.result[0];
             var q = s.indicators.quote[0];
             var bars = new List<Candle>();
@@ -131,11 +136,11 @@ namespace OrbitCalendar
             var last = bars[bars.Count - 1];
             var change = last.Close - bars[bars.Count - 2].Close;
             return new View { Bars = bars, Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + (" " + item.Unit),
-                Stamp = last.Day.ToString("yyyy/MM/dd") + " 日足  ·  前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + (" " + item.Unit),
-                Caption = bars[0].Day.ToString("MM/dd") + "  —  " + last.Day.ToString("MM/dd") + "     緑：上昇   赤：下落" };
+                Stamp = last.Day.ToString("yyyy/MM/dd") + (months > 12 ? " 週足  ·  前週比 " : " 日足  ·  前日比 ") + change.ToString("+#,##0.##;-#,##0.##;0") + (" " + item.Unit),
+                Caption = bars[0].Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") + "  —  " + last.Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") + "     緑：上昇   赤：下落" };
         }
 
-        static async Task<View> Fund(Instrument item, CancellationToken token)
+        static async Task<View> FundPeriod(Instrument item, int months, CancellationToken token)
         {
             var bytes = await Get("https://www.am.mufg.jp/fund_file/setteirai/" + item.Key + ".csv", token).ConfigureAwait(false);
             var bars = new List<Candle>();
@@ -152,7 +157,7 @@ namespace OrbitCalendar
                     bars.Add(new Candle { Day = day, Open = value, Close = value, High = value, Low = value });
                 }
             }
-            return FundPrices.CreateView(item, bars);
+            return FundPrices.CreatePeriodView(item, bars, months);
         }
 
         public class Viewport

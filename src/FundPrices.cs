@@ -23,9 +23,11 @@ namespace OrbitCalendar
         static FundPrices() { http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 OrbitCalendar/1.11"); }
 
         // Public, read-only history export linked by SBI Securities' fund history page.
-        public static async Task<LiveData.View> Sbi(Instrument item, CancellationToken token)
+        public static Task<LiveData.View> Sbi(Instrument item, CancellationToken token) { return SbiPeriod(item, 3, token); }
+
+        public static async Task<LiveData.View> SbiPeriod(Instrument item, int months, CancellationToken token)
         {
-            DateTime end = DateTime.UtcNow.AddHours(9).Date, start = end.AddMonths(-3).AddDays(-7);
+            DateTime end = DateTime.UtcNow.AddHours(9).Date, start = end.AddMonths(-months).AddDays(-7);
             string url = "https://site0.sbisec.co.jp/marble/fund/history/standardprice/standardPriceHistoryCsvAction.do?fund_sec_code=" +
                 Uri.EscapeDataString(item.Code) + DateQuery("from", start) + DateQuery("to", end);
             await requests.WaitAsync(token).ConfigureAwait(false);
@@ -42,7 +44,7 @@ namespace OrbitCalendar
                     byte[] bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
                     string csv = Encoding.GetEncoding(932).GetString(bytes);
                     if (csv.TrimStart().StartsWith("<", StringComparison.Ordinal)) throw new HttpRequestException("取得元が一時的に利用できません");
-                    return ParseSbi(item, csv);
+                    return ParseSbiPeriod(item, csv, months);
                 }
             }
             finally { requests.Release(); }
@@ -55,7 +57,9 @@ namespace OrbitCalendar
                 "&in_term_" + side + "_dd=" + day.ToString("dd", CultureInfo.InvariantCulture);
         }
 
-        internal static LiveData.View ParseSbi(Instrument item, string csv)
+        internal static LiveData.View ParseSbi(Instrument item, string csv) { return ParseSbiPeriod(item, csv, 3); }
+
+        internal static LiveData.View ParseSbiPeriod(Instrument item, string csv, int months)
         {
             string name = null;
             bool priceHeader = false;
@@ -82,19 +86,21 @@ namespace OrbitCalendar
                 throw new FundDataUnavailableException("取得元のファンド名を照合できませんでした");
             if (bars.GroupBy(b => b.Day).Any(g => g.Select(b => b.Close).Distinct().Count() > 1)) throw new InvalidDataException("同じ日付の基準価額が重複しています");
             bars = bars.GroupBy(b => b.Day).Select(g => g.First()).OrderBy(b => b.Day).ToList();
-            return CreateView(item, bars);
+            return CreatePeriodView(item, bars, months);
         }
 
-        internal static LiveData.View CreateView(Instrument item, List<LiveData.Candle> bars)
+        internal static LiveData.View CreateView(Instrument item, List<LiveData.Candle> bars) { return CreatePeriodView(item, bars, 3); }
+
+        internal static LiveData.View CreatePeriodView(Instrument item, List<LiveData.Candle> bars, int months)
         {
             if (bars.Count < 2) throw new InvalidDataException();
             var last = bars[bars.Count - 1];
             double change = last.Close - bars[bars.Count - 2].Close;
-            bars = bars.Where(b => b.Day >= last.Day.AddMonths(-3)).ToList();
+            bars = bars.Where(b => b.Day >= last.Day.AddMonths(-months)).ToList();
             if (bars.Count < 2) throw new InvalidDataException();
             return new LiveData.View { IsFund = true, Bars = bars, Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + " 円",
                 Stamp = last.Day.ToString("yyyy/MM/dd") + "  基準価額 " + last.Close.ToString("#,##0.##") + "円 / 1万口",
-                Caption = "前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + " 円   " + bars[0].Day.ToString("MM/dd") + " — " + last.Day.ToString("MM/dd") };
+                Caption = "前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + " 円   " + bars[0].Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") + " — " + last.Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") };
         }
 
         static string[] CsvRow(string line)

@@ -22,6 +22,7 @@ namespace OrbitCalendar
                 if (activeWeather == null || loading != null) return;
                 StopRadar();
                 selectingPlace = true;
+                Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
                 candidatePlace = null;
                 Get<Canvas>("Plot").Cursor = Cursors.Cross;
                 Get<Button>("PickPlace").Content = "指定をやめる";
@@ -66,6 +67,7 @@ namespace OrbitCalendar
             choice[2] = 0;
             nextTodayWeather = DateTime.MinValue;
             Get<TextBlock>("TodayWeather").Text = "◌";
+            Get<TextBlock>("TodayHigh").Text = ""; Get<TextBlock>("TodayLow").Text = "";
             UpdateTodayWeather();
             LoadView(true);
         }
@@ -73,6 +75,7 @@ namespace OrbitCalendar
         void CancelPlaceSelection()
         {
             selectingPlace = false;
+            Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             candidatePlace = null;
             Get<Canvas>("Plot").Cursor = Cursors.Arrow;
             Get<Button>("PickPlace").Content = "地点を指定";

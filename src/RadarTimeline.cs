@@ -48,7 +48,7 @@ namespace OrbitCalendar
                 radarPaintQueued = false;
                 if (!IsVisible || mode != 2 || showDailyWeather || IsClosing) return;
                 var area = PanelBounds(Get<Canvas>("TemperaturePlot"));
-                area.Union(PanelBounds(Get<StackPanel>("RadarControls")));
+                area.Union(PanelBounds(Get<Grid>("RadarControls")));
                 effect.RefreshArea(area);
             }), System.Windows.Threading.DispatcherPriority.Render);
         }
@@ -79,7 +79,7 @@ namespace OrbitCalendar
             updatingTimeline = false;
             double age = Math.Max(0, (radarOrigin - radarFrames[0].ValidUtc).TotalMinutes);
             string range = radarOrigin.AddHours(9).ToString("HH:mm") + " → " + radarFrames.Last().ValidUtc.AddHours(9).ToString("HH:mm");
-            Get<TextBlock>("RadarRange").Text = range + (age > 15 ? " · 観測" + (int)age + "分前" : "") + (radarFrames.Length > 1 ? " · 雨雲5分間隔 / 最大1時間先" : " · 予測を取得できませんでした");
+            Get<TextBlock>("RadarRange").Text = range + (age > 15 ? " · 観測" + (int)age + "分前" : "");
             DrawRadar(view);
             drawnRadarIndex = Array.IndexOf(radarFrames, view);
             UpdateRadarCaption(view);

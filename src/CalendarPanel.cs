@@ -42,7 +42,7 @@ namespace OrbitCalendar
             var earthTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(125) };
             earthTick.Tick += delegate
             {
-                var globeArea = new Rect(322, 53, 95, 94);
+                var globeArea = new Rect(198, 53, 95, 94);
                 if (!SystemParameters.ClientAreaAnimation || mode != 0 || !effect.CanRefreshArea(globeArea)) return;
                 earth.Rotation = rotation.Elapsed.TotalSeconds * .14;
                 earth.InvalidateVisual();
@@ -56,7 +56,6 @@ namespace OrbitCalendar
             Get<Button>("Previous").Click += delegate { MoveMonth(-1); };
             Get<Button>("Next").Click += delegate { MoveMonth(1); };
             Get<Button>("Today").Click += delegate { SelectDate(DateTime.Today); };
-            Get<Button>("CloseButton").Click += delegate { collapse(); };
             Get<Button>("FocusButton").Click += delegate { toggleFocus(); };
             InitializeControls();
             PreviewMouseWheel += delegate(object sender, MouseWheelEventArgs e)
@@ -74,6 +73,7 @@ namespace OrbitCalendar
             for (int r = 0; r < 7; r++) dates.RowDefinitions.Add(new RowDefinition { Height = r == 0 ? new GridLength(35) : new GridLength(1, GridUnitType.Star) });
             DrawDates();
             InitializeViews();
+            if (Preferences.LastTab != 0) SwitchView(Preferences.LastTab);
         }
 
         void OnKey(object sender, KeyEventArgs e)
@@ -90,6 +90,8 @@ namespace OrbitCalendar
             {
                 ClosePanel("TimerPicker");
             }
+            else if (e.Key == Key.Escape && Get<Border>("RangePicker").Visibility == Visibility.Visible) ClosePanel("RangePicker");
+            else if (e.Key == Key.Escape && Get<Border>("CreditsPicker").Visibility == Visibility.Visible) ClosePanel("CreditsPicker");
             else if (e.Key == Key.Escape) collapse();
             else if (mode != 0) return;
             else if (e.Key == Key.PageUp) MoveMonth(-1);
@@ -212,7 +214,11 @@ namespace OrbitCalendar
         {
             if (!IsVisible || IsClosing) return;
             CloseMarketSettings();
-            if (loading != null) loading.Cancel();
+            Get<Border>("RangePicker").Visibility = Visibility.Collapsed;
+            Get<Border>("CreditsPicker").Visibility = Visibility.Collapsed;
+            StopRadar();
+            CancelNewsPreview();
+            if (loading != null) { loading.Cancel(); nextUpdate = DateTime.MinValue; }
             CancelPlaceSelection();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
@@ -224,13 +230,15 @@ namespace OrbitCalendar
         {
             effect.Stop();
             root.IsHitTestVisible = true;
-            Shell.Position(this, 458, 542);
-            if (mode != 0) SwitchView(0);
+            root.Height = PreferredHeight;
+            Shell.Position(this, 458, PreferredHeight);
             Show();
             Activate();
+            if (mode == 3 && information != null) RenderInformation(false);
             UpdateLayout();
             effect.Start(false);
-            UpdateTodayWeather();
+            if (mode == 0) UpdateTodayWeather();
+            else if (nextUpdate <= DateTime.UtcNow || loading == null && Get<TextBlock>("DataStamp").Text.Contains("取得中")) LoadView(false);
         }
 
         public void Tick(DateTime now, string focus)

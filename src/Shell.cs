@@ -19,25 +19,16 @@ namespace OrbitCalendar
         readonly DispatcherTimer tick = new DispatcherTimer();
         bool exiting;
         TimeSpan focusLength;
-        readonly Window countdown = new Window { Title = "Orbit Timer", ShowActivated = false };
-        readonly System.Windows.Controls.Button remainingLabel = new System.Windows.Controls.Button();
+        readonly ParticleTimer countdown;
 
         public Shell()
         {
             panel = new CalendarPanel(Collapse, ToggleFocus);
-            StyleWindow(countdown);
-            remainingLabel.Background = Art.Ink("#102835");
-            remainingLabel.Foreground = Art.Ink("#7BE5DA");
-            remainingLabel.FontSize = 21;
-            remainingLabel.FontFamily = new System.Windows.Media.FontFamily("Bahnschrift");
-            remainingLabel.BorderBrush = Art.Ink("#36545F");
-            remainingLabel.ToolTip = "クリックしてカレンダーを開く";
-            remainingLabel.Click += delegate { Open(); };
-            countdown.Content = remainingLabel;
+            countdown = new ParticleTimer(Open);
             tray = new Forms.NotifyIcon { Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location),
                 Text = "Orbit Calendar", ContextMenuStrip = menu, Visible = true };
             tray.MouseClick += delegate(object sender, Forms.MouseEventArgs e) { if (e.Button == Forms.MouseButtons.Left) Toggle(); };
-            menu.Items.Add("カレンダーを開く／閉じる", null, delegate { Toggle(); });
+            menu.Items.Add("ウィンドウを開く／閉じる", null, delegate { Toggle(); });
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("Orbit Calendar を終了", null, delegate { Application.Current.Shutdown(); });
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)
@@ -117,10 +108,12 @@ namespace OrbitCalendar
             string tooltip = "Orbit Calendar  " + newDate + "  " + newTime + (focus.Length == 0 ? "" : "\n集中  " + focus);
             if (tray.Text != tooltip) tray.Text = tooltip;
             panel.Tick(now, focus);
+            double progress = focusTimer.IsRunning && focusLength.TotalSeconds > 0 ? focusTimer.Elapsed.TotalSeconds / focusLength.TotalSeconds : 0;
+            panel.UpdateTimerProgress(progress, focusTimer.IsRunning);
             if (focus.Length > 0 && !panel.IsVisible)
             {
-                remainingLabel.Content = "◷  " + focus;
-                Position(countdown, 140, 44);
+                countdown.Update(focus, progress);
+                Position(countdown, 188, 52);
                 if (!countdown.IsVisible) countdown.Show();
             }
             else countdown.Hide();

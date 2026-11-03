@@ -11,7 +11,7 @@ namespace OrbitCalendar
     internal static class Preferences
     {
         static readonly string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OrbitCalendar", "display.txt");
-        public static int Pattern, Motion = 6, Minutes = 30;
+        public static int Pattern, Motion = 6, Minutes = 30, LastTab;
         static Preferences()
         {
             try
@@ -21,13 +21,14 @@ namespace OrbitCalendar
                 if (parts.Length > 0 && int.TryParse(parts[0], out value) && value >= 0 && value < 4) Pattern = value;
                 if (parts.Length > 1 && int.TryParse(parts[1], out value) && value >= 0 && value < 7) Motion = value;
                 if (parts.Length > 2 && int.TryParse(parts[2], out value) && value >= 1 && value <= 180) Minutes = value;
+                if (parts.Length > 3 && int.TryParse(parts[3], out value) && value >= 0 && value <= 4) LastTab = value;
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
         public static void Save()
         {
-            try { Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path, new[] { Pattern.ToString(), Motion.ToString(), Minutes.ToString() }); }
+            try { Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path, new[] { Pattern.ToString(), Motion.ToString(), Minutes.ToString(), LastTab.ToString() }); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }

@@ -175,7 +175,7 @@ namespace OrbitCalendar
         void RemoveMarket(Instrument item)
         {
             var selectedItem = SelectedMarket;
-            Watchlist.Items.Remove(item); marketSaved.Remove(item.Id);
+            Watchlist.Items.Remove(item); foreach (string key in marketSaved.Keys.Where(k => k.StartsWith(item.Id + ":", StringComparison.Ordinal)).ToArray()) marketSaved.Remove(key);
             choice[1] = selectedItem != null && Watchlist.Items.Contains(selectedItem) ? Watchlist.Items.IndexOf(selectedItem) : 0;
             ChangeWatchlist(); DrawMarketSettings();
         }
@@ -211,7 +211,7 @@ namespace OrbitCalendar
             {
                 var view = await LiveData.Market(item, request.Token);
                 if (request.IsCancellationRequested) return;
-                Watchlist.Confirm(item); marketSaved[item.Id] = view;
+                Watchlist.Confirm(item); marketSaved[item.Id + ":3"] = view;
                 DrawMarketSettings(); message.Text = Watchlist.SaveError ?? ("取得成功 · 最新データ " + view.Bars.Last().Day.ToString("yyyy/MM/dd"));
             }
             catch (FundDataUnavailableException ex)
