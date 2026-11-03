@@ -113,7 +113,7 @@ namespace OrbitCalendar
             if (focus.Length > 0 && !panel.IsVisible)
             {
                 countdown.Update(focus, progress);
-                Position(countdown, 188, 52);
+                Position(countdown, countdown.PreferredWidth, 52);
                 if (!countdown.IsVisible) countdown.Show();
             }
             else countdown.Hide();

@@ -71,28 +71,30 @@
       <Grid Name="Dates" Grid.Row="1" Margin="16,10,16,8"/>
       <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid>
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center"/>
-            <TextBlock Name="TodayWeather" Text="" FontSize="26" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E"
-                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition/><ColumnDefinition Width="118"/></Grid.ColumnDefinitions>
+          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center"/>
+          <StackPanel Name="TodayWeatherGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Name="TodayWeather" Text="" FontSize="26" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E" VerticalAlignment="Center"/>
             <StackPanel Name="TodayTemperatures" Margin="9,0,0,0" VerticalAlignment="Center"><TextBlock Name="TodayHigh" FontSize="13" Foreground="#F4B09F"/><TextBlock Name="TodayLow" FontSize="13" Foreground="#8EC5FF"/></StackPanel>
           </StackPanel>
-          <TextBlock Name="HolidayName" MaxWidth="126" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+          <TextBlock Name="HolidayName" Grid.Column="2" MaxWidth="118" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
         </Grid>
       </Border>
       <Grid Grid.Row="3" Margin="17,0">
         <Border Background="#25424C" Height="2" VerticalAlignment="Top"/>
         <Border Name="YearGauge" Background="#7BE5DA" Height="2" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+          <Grid Name="TimerProgressTrack" Width="104" Height="5" HorizontalAlignment="Left" VerticalAlignment="Center" Visibility="Collapsed" Background="#25424C"><Border Name="TimerProgress" Width="0" HorizontalAlignment="Left" Background="#7BE5DA" CornerRadius="2"/></Grid>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
           <Button Name="TimerDuration" Content="30 分" ToolTip="タイマーの時間を選択"/>
           <Button Name="FocusButton" Content="▶" Width="32" ToolTip="タイマーを開始・停止"/>
-          <Grid Name="TimerProgressTrack" Width="104" Height="5" Margin="9,0,0,0" Visibility="Collapsed" Background="#25424C"><Border Name="TimerProgress" Width="0" HorizontalAlignment="Left" Background="#7BE5DA" CornerRadius="2"/></Grid>
         </StackPanel>
       </Grid>
       </Grid>
       <StackPanel Grid.Row="1" Name="DataBody" Margin="20,12" Visibility="Collapsed">
         <Grid Name="DataHeader" Height="25">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Name="SectionLabel" Foreground="#86E8DE" FontFamily="Consolas" FontSize="13" VerticalAlignment="Center"/><Button Name="MarketRange" Content="3 MONTHS ▾" FontFamily="Consolas" Foreground="#86E8DE" FontSize="13" Padding="5,2" Visibility="Collapsed"/></StackPanel>
+          <StackPanel Name="NewsCategories" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed"><Button Name="NewsCategory0" Content="総合"/><Button Name="NewsCategory1" Content="経済" Margin="4,0,0,0"/><Button Name="NewsCategory2" Content="IT" Margin="4,0,0,0"/></StackPanel>
           <StackPanel Name="WeatherSwitch" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed"><Button Name="RainMode" Content="雨雲" Background="#296675"/><Button Name="DailyMode" Content="3日間の天気" Margin="5,0,0,0"/></StackPanel>
         </Grid>
         <TextBlock Name="DataTitle" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,0"/>
@@ -128,6 +130,7 @@
         </Grid>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
+      <Grid Name="LoadingArea" Grid.Row="1" Margin="20,153,20,24" Background="#0B1923" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.Name="データを読み込んでいます"/>
         <Border Name="PlaceConfirm" Grid.RowSpan="2" Width="400" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="#102835" Padding="7" BorderThickness="1" BorderBrush="#528793" CornerRadius="6" Margin="0,0,0,51" Visibility="Collapsed">
           <StackPanel>
             <TextBlock Name="PlaceSummary" Foreground="#B8E9E4" FontSize="12" TextWrapping="Wrap"/>

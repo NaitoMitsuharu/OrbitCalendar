@@ -25,10 +25,10 @@ try{
  Assert ($root.FindName('TodayHigh').Text -match '\d' -and $root.FindName('TodayLow').Text -match '\d') 'Calendar high/low missing'
  $panel.UpdateTimerProgress(.25,$true);Pump 150;Assert ($root.FindName('TimerProgress').Width -eq 26) 'Timer 25% gauge incorrect';Snapshot 'timer-calendar.png'
  $panel.UpdateTimerProgress(.75,$true);Pump 150;Assert ($root.FindName('TimerProgress').Width -eq 78) 'Timer gauge did not increase';$panel.UpdateTimerProgress(0,$false)
- $mini=[Activator]::CreateInstance($a.GetType('OrbitCalendar.ParticleTimer'),[object[]]@([Action]{}));$mini.Width=188;$mini.Height=52;$mini.Update('05:00',.5);$mini.Show();Pump 1800
+ $mini=[Activator]::CreateInstance($a.GetType('OrbitCalendar.ParticleTimer'),[object[]]@([Action]{}));$mini.Width=188;$mini.Height=52;$mini.Update('05:00',.5);$mini.Width=$mini.PreferredWidth;$mini.Show();Pump 1800
  $mt=$mini.GetType();$effect=$mt.GetField('effect',$if).GetValue($mini);Assert ($effect.GetType().GetField('grains',$if).GetValue($effect).Length -gt 100) 'Compact timer is not particle rendered'
  Assert ($mt.GetField('glass',$if).GetValue($mini).Progress -eq .5 -and $mt.GetField('gauge',$if).GetValue($mini).Height -eq 15) 'Hourglass/progress not synchronized'
- SaveImage $mini.Content 188 52 'timer-particles.png';$mini.Hide()
+ SaveImage $mini.Content ([int]$mini.PreferredWidth) 52 'timer-particles.png';$mini.Hide()
  Click 'MarketTab';WaitLoading;Assert ($root.FindName('DataSource').Visibility -eq 'Collapsed') 'Market footer link remains'
  Click 'MarketRange';Pump 1500;Assert ($root.FindName('RangePicker').Visibility -eq 'Visible') 'Styled range menu did not open';Snapshot 'market-periods.png'
  $root.FindName('RangeChoices').Children[0].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));WaitLoading
@@ -59,7 +59,7 @@ try{
  $fixture=[Activator]::CreateInstance($feedType,$true);$fixture.Items=@($normal,$delay,$unknown);$fixture.Fetched=[DateTime]::UtcNow;$fixture.PartialFailure=$true;$pt.GetField('information',$if).SetValue($panel,$fixture)
  $pt.GetMethod('RenderInformation',$if).Invoke($panel,@($false))|Out-Null;$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Refresh();Pump 200
  Assert ($root.FindName('InformationBody').Children.Count -eq 1) 'Transit shows normal/unknown as disruptions';Assert ($root.FindName('DataStamp').Text.Contains('確認できません')) 'Missing route information silently hidden';Snapshot 'transit-example.png'
- $fixture.Items=@($normal);$fixture.PartialFailure=$false;$pt.GetMethod('RenderInformation',$if).Invoke($panel,@($false))|Out-Null;Assert ($root.FindName('InformationBody').Children.Count -eq 0) 'Normal service not hidden';Reopen 4
+ $fixture.Items=@($normal);$fixture.PartialFailure=$false;$pt.GetMethod('RenderInformation',$if).Invoke($panel,@($false))|Out-Null;Assert ($root.FindName('InformationBody').Children.Count -eq 1 -and $root.FindName('InformationBody').Children[0].Tag -eq 'transit-clear') 'Normal service confirmation missing';Reopen 4
  Click 'SettingsButton';Pump 1800;Click 'OpenCredits';Pump 1800;Assert ($root.FindName('CreditsPicker').Visibility -eq 'Visible' -and $root.FindName('CreditLinks').Children.Count -ge 8) 'Credits inaccessible'
  Write-Output 'PASS: tab retention/persistence, removed close/footer controls, calendar temperatures, timer/hourglass particles and gauges, themed range menu and live stock/fund periods, aligned weather axes/boundaries, news images/summaries/next article, disruptions-only transit and unknown-state disclosure, settings credits'
  Write-Output $folder

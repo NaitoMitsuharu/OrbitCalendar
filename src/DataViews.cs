@@ -33,6 +33,7 @@ namespace OrbitCalendar
             InitializePlacePicker();
             InitializeMarketSettings();
             InitializeRangeAndCredits();
+            InitializeLoading();
             radarPlayback.Interval = TimeSpan.FromMilliseconds(33);
             radarPlayback.Tick += delegate { AdvanceRadarPlayback(); };
             Get<Button>("RadarPlay").Click += delegate
@@ -78,6 +79,7 @@ namespace OrbitCalendar
         void SwitchView(int value)
         {
             CancelNewsPreview();
+            ClearDataLoading();
             CloseMarketSettings();
             Get<Border>("RangePicker").Visibility = Visibility.Collapsed;
             Get<Border>("CreditsPicker").Visibility = Visibility.Collapsed;
@@ -173,7 +175,8 @@ namespace OrbitCalendar
                 }
                 if (fetch)
                 {
-                    stamp.Text = view == null ? (!market && index == 0 ? "現在地と雨雲を確認中…" : "データを取得中…") : view.Stamp + "  ·  更新中";
+                    stamp.Text = market ? (view == null ? "データを取得中…" : view.Stamp + " · 更新中") : view == null ? "" : view.Stamp;
+                    if (!market) BeginDataLoading(request);
                     refresh.IsEnabled = false;
                 }
                 UpdateLayout();
@@ -185,6 +188,7 @@ namespace OrbitCalendar
                     if (market) { marketSaved[MarketCacheKey(instrument)] = view; Watchlist.Confirm(instrument); }
                     else if (requestedViewport == null) saved[key] = view;
                     if (!market) { weatherForecast = await TryForecast(request.Token, force); if (request.IsCancellationRequested) return; }
+                    EndDataLoading(request);
                     ShowData(view);
                     UpdateLayout();
                     effect.Start(true);
@@ -215,6 +219,7 @@ namespace OrbitCalendar
             }
             finally
             {
+                EndDataLoading(request);
                 if (loading == request)
                 {
                     loading = null;

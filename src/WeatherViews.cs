@@ -26,6 +26,8 @@ namespace OrbitCalendar
         void SetVisible(string name, bool visible) { Get<FrameworkElement>(name).Visibility = visible ? Visibility.Visible : Visibility.Collapsed; }
         void PrepareStandardView()
         {
+            ClearDataLoading();
+            SetVisible("NewsCategories", false);
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", false);
             SetVisible("WeatherSwitch", mode == 2); SetVisible("Plot", true); SetVisible("TemperaturePlot", mode == 2);
             SetVisible("DataChoices", true); SetVisible("MarketRange", mode == 1); SetVisible("DataSource", false);
@@ -41,6 +43,7 @@ namespace OrbitCalendar
             if (loading != null) loading.Cancel();
             var request = new CancellationTokenSource(); loading = request;
             StopRadar();
+            SetVisible("NewsCategories", false);
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", true); SetVisible("WeatherSwitch", true);
             foreach (string name in new[] { "Plot", "TemperaturePlot", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
             SetVisible("DataChoices", true); SetVisible("RegionChoices", false); SetVisible("DataSource", false);
@@ -48,15 +51,17 @@ namespace OrbitCalendar
             Get<TextBlock>("SectionLabel").Text = "WEATHER";
             SetVisible("MarketRange", false);
             Get<TextBlock>("DataTitle").Text = "今日・明日・明後日";
-            Get<TextBlock>("DataStamp").Text = "基準地点の予報を取得中…";
+            Get<TextBlock>("DataStamp").Text = "";
             Get<Button>("DataSource").Content = "Open-Meteo ↗ · 予報は随時変わります";
             Get<Button>("RefreshData").IsEnabled = false;
             Get<StackPanel>("DailyWeatherBody").Children.Clear();
+            BeginDataLoading(request);
             UpdateLayout(); effect.Start(true);
             try
             {
                 var result = await LiveData.ForecastWeather(request.Token, force);
                 if (request.IsCancellationRequested) return;
+                EndDataLoading(request);
                 weatherForecast = result; RenderDailyWeather(); nextUpdate = result.Fetched.AddMinutes(15);
                 var midnight = DateTime.UtcNow.AddHours(9).Date.AddDays(1).AddHours(-9);
                 if (nextUpdate > midnight) nextUpdate = midnight;
@@ -68,6 +73,7 @@ namespace OrbitCalendar
             }
             finally
             {
+                EndDataLoading(request);
                 if (loading == request) { loading = null; Get<Button>("RefreshData").IsEnabled = true; UpdateLayout(); effect.Refresh(); RefreshViewAfterLayout(); }
                 request.Dispose();
             }

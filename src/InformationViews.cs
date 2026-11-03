@@ -24,24 +24,28 @@ namespace OrbitCalendar
             var request = new CancellationTokenSource(); loading = request; StopRadar();
             bool news = mode == 3; int requestedMode = mode, key = news ? choice[3] : 10;
             foreach (string name in new[] { "MarketRange", "WeatherSwitch", "Plot", "TemperaturePlot", "DailyWeatherBody", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
-            SetVisible("InformationBody", true); SetVisible("RegionChoices", true); SetVisible("DataChoices", true); SetVisible("DataSource", false);
+            SetVisible("NewsCategories", news);
+            SetVisible("InformationBody", true); SetVisible("RegionChoices", !news); SetVisible("DataChoices", true); SetVisible("DataSource", false);
             string[] labels = news ? new[] { "総合", "経済", "IT" } : new[] { "近隣", "JR", "私鉄" };
             for (int i = 0; i < choices.Length; i++)
             {
                 choices[i].Visibility = i < labels.Length ? Visibility.Visible : Visibility.Collapsed;
                 if (i < labels.Length) { choices[i].Content = labels[i]; choices[i].Background = i == choice[mode] ? activeTab : Brushes.Transparent; }
             }
+            for (int i = 0; i < 3; i++) Get<Button>("NewsCategory" + i).Background = i == choice[3] ? activeTab : Brushes.Transparent;
             Get<TextBlock>("SectionLabel").Text = news ? "NEWS" : "TRANSIT   /   YOKOHAMA";
             Get<TextBlock>("DataTitle").Text = news ? "ニュース" : "運行情報";
             Get<Button>("DataSource").Content = news ? "配信元のRSS ↗" : "各路線をクリックで公式情報 ↗";
-            Get<TextBlock>("DataStamp").Text = "情報を取得中…";
+            Get<TextBlock>("DataStamp").Text = "";
             Get<Button>("RefreshData").IsEnabled = false;
             if (informationKey != key) { information = null; Get<StackPanel>("InformationBody").Children.Clear(); infoPage = 0; }
+            BeginDataLoading(request);
             UpdateLayout(); effect.Start(true);
             try
             {
                 var feed = news ? await InformationFeeds.News(key, force, request.Token) : await InformationFeeds.Transit(force, request.Token);
                 if (request.IsCancellationRequested || mode != requestedMode) return;
+                EndDataLoading(request);
                 information = feed; informationKey = key;
                 RenderInformation(false); nextUpdate = feed.Fetched.AddMinutes(news ? 10 : 5);
             }
@@ -54,6 +58,7 @@ namespace OrbitCalendar
             }
             finally
             {
+                EndDataLoading(request);
                 if (loading == request) { loading = null; Get<Button>("RefreshData").IsEnabled = true; UpdateLayout(); effect.Refresh(); RefreshViewAfterLayout(); }
                 request.Dispose();
             }
@@ -62,9 +67,22 @@ namespace OrbitCalendar
         {
             bool news = mode == 3;
             if (news) { RenderNewsArticle(stale); return; }
-            var items = information.Items.Where(i => i.Normal == false && (choice[4] == 0 || (choice[4] == 1 ? i.Source == "JR東日本" : i.Source != "JR東日本"))).ToArray();
+            var routes = information.Items.Where(i => choice[4] == 0 || (choice[4] == 1 ? i.Source == "JR東日本" : i.Source != "JR東日本")).ToArray();
+            var items = routes.Where(i => i.Normal == false).ToArray();
             Get<TextBlock>("DataStamp").Text = information.Fetched.AddHours(9).ToString("HH:mm") + " 確認" + (stale ? " · 更新失敗（前回の情報）" : information.PartialFailure ? " · 一部の路線は確認できません" : "");
             var body = Get<StackPanel>("InformationBody"); body.Children.Clear();
+            if (items.Length == 0)
+            {
+                bool clear = !stale && routes.Length > 0 && Array.TrueForAll(routes, r => r.Normal == true);
+                string title = clear ? "現在、運行に大きな乱れはありません" : stale ? "前回の確認では、遅延等の掲載はありません" : "運行情報を確認できない路線があります";
+                string detail = clear ? "対象路線に遅延・見合わせの発表はありません" : stale ? "更新できませんでした。最新情報は各社公式サイトへ" : "情報がない路線を平常運転とは判断していません";
+                var status = new StackPanel();
+                status.Children.Add(new TextBlock { Text = clear ? "✓" : "—", FontSize = 25, Foreground = clear ? aqua : muted });
+                status.Children.Add(new TextBlock { Text = title, FontSize = 16, TextWrapping = TextWrapping.Wrap, Foreground = clear ? aqua : muted, Margin = new Thickness(0, 9, 0, 7) });
+                status.Children.Add(new TextBlock { Text = detail, FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = muted });
+                body.Children.Add(new Border { Child = status, Padding = new Thickness(18), Margin = new Thickness(0, 16, 0, 0), CornerRadius = new CornerRadius(8), Background = Art.Ink("#152E39"), Tag = clear ? "transit-clear" : stale ? "transit-stale" : "transit-unavailable" });
+                return;
+            }
             int perPage = 3;
             int pages = Math.Max(1, (items.Length + perPage - 1) / perPage); infoPage = Math.Max(0, Math.Min(infoPage, pages - 1));
             foreach (var item in items.Skip(infoPage * perPage).Take(perPage))

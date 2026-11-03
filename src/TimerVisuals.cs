@@ -37,7 +37,8 @@ namespace OrbitCalendar
     }
     internal sealed class ParticleTimer : Window
     {
-        readonly Grid root = new Grid { Width = 188, Height = 52 };
+        readonly Grid root = new Grid { Width = 126, Height = 52 };
+        readonly System.Collections.Generic.Dictionary<int, double> clockWidths = new System.Collections.Generic.Dictionary<int, double>();
         readonly TextBlock label = new TextBlock { FontSize = 23, FontFamily = new FontFamily("Bahnschrift"), Foreground = Art.Ink("#7BE5DA"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(52, 0, 18, 0) };
         readonly Hourglass glass = new Hourglass { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(13, 0, 0, 0) };
         readonly Border gauge = new Border { Width = 3, Height = 0, VerticalAlignment = VerticalAlignment.Bottom, Background = Art.Ink("#7BE5DA") };
@@ -61,9 +62,19 @@ namespace OrbitCalendar
             };
             Closed += delegate { motion.Stop(); effect.Stop(); };
         }
+        public double PreferredWidth { get { return root.Width; } }
         public void Update(string remaining, double progress)
         {
-            label.Text = remaining; glass.Progress = Math.Max(0, Math.Min(1, progress)); glass.InvalidateVisual(); gauge.Height = glass.Progress * 30;
+            label.Text = remaining;
+            double width;
+            if (!clockWidths.TryGetValue(remaining.Length, out width))
+            {
+                var measure = new TextBlock { Text = remaining.Length > 5 ? "000:00" : "00:00", FontFamily = label.FontFamily, FontSize = label.FontSize, Margin = label.Margin };
+                measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                clockWidths[remaining.Length] = width = Math.Max(124, Math.Ceiling(measure.DesiredSize.Width + 2));
+            }
+            root.Width = width;
+            glass.Progress = Math.Max(0, Math.Min(1, progress)); glass.InvalidateVisual(); gauge.Height = glass.Progress * 30;
             if (IsVisible) effect.Refresh();
         }
     }
@@ -74,10 +85,17 @@ namespace OrbitCalendar
         public void UpdateTimerProgress(double progress, bool running)
         {
             if (!running && !lastTimerGauge && lastTimerProgress >= 0) return;
+            bool appearing = running && !lastTimerGauge;
+            var track = Get<Grid>("TimerProgressTrack");
+            Rect bounds = track.Visibility == Visibility.Visible ? PanelBounds(track) : Rect.Empty;
             lastTimerGauge = running; lastTimerProgress = progress;
-            Get<Grid>("TimerProgressTrack").Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+            track.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
             Get<Border>("TimerProgress").Width = 104 * Math.Max(0, Math.Min(1, progress));
-            if (mode == 0 && IsVisible) effect.Refresh();
+            if (mode != 0 || !IsVisible || IsClosing) return;
+            if (running) bounds = PanelBounds(track);
+            if (appearing) effect.StartArea(bounds, true);
+            else if (!bounds.IsEmpty) effect.RefreshArea(bounds);
+
         }
     }
 }

@@ -218,6 +218,7 @@ namespace OrbitCalendar
             Get<Border>("CreditsPicker").Visibility = Visibility.Collapsed;
             StopRadar();
             CancelNewsPreview();
+            ClearDataLoading();
             if (loading != null) { loading.Cancel(); nextUpdate = DateTime.MinValue; }
             CancelPlaceSelection();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
