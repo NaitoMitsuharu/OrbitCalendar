@@ -7,7 +7,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 
 namespace OrbitCalendar
 {
@@ -21,6 +20,7 @@ namespace OrbitCalendar
 
         void InitializeMarketSettings()
         {
+            InitializeMarketTransitions();
             Get<Button>("SettingsMarkets").Click += delegate { OpenMarketSettings(false); };
             Get<Button>("ManageMarkets").Click += delegate { OpenMarketSettings(false); };
             Get<Button>("CloseMarketPicker").Click += delegate { CloseMarketSettings(); };
@@ -38,10 +38,10 @@ namespace OrbitCalendar
             for (int i = 0; i < filters.Length; i++)
             {
                 int value = i;
-                Get<Button>(filters[i]).Click += delegate { CancelMarketCheck(); marketFilter = value; marketPage = 0; DrawMarketSettings(); };
+                Get<Button>(filters[i]).Click += delegate { CancelMarketCheck(); marketFilter = value; marketPage = 0; DrawMarketSettings(); AnimateMarketTransition(false); };
             }
-            Get<Button>("MarketPrevious").Click += delegate { CancelMarketCheck(); marketPage--; DrawMarketSettings(); };
-            Get<Button>("MarketNext").Click += delegate { CancelMarketCheck(); marketPage++; DrawMarketSettings(); };
+            Get<Button>("MarketPrevious").Click += delegate { CancelMarketCheck(); marketPage--; DrawMarketSettings(); AnimateMarketTransition(false); };
+            Get<Button>("MarketNext").Click += delegate { CancelMarketCheck(); marketPage++; DrawMarketSettings(); AnimateMarketTransition(false); };
             Get<ScrollViewer>("MarketScroll").ScrollChanged += delegate(object sender, ScrollChangedEventArgs e)
             {
                 if (e.HorizontalChange != 0 && mode == 1 && IsVisible)
@@ -78,16 +78,14 @@ namespace OrbitCalendar
             var picker = Get<Border>("MarketPicker");
             picker.Visibility = Visibility.Visible;
             ShowMarketSettings(search);
-            if (SystemParameters.ClientAreaAnimation)
-                picker.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)));
+
         }
         void CloseMarketSettings()
         {
             searchWait.Stop();
             CancelMarketCheck();
             var picker = Get<Border>("MarketPicker");
-            picker.BeginAnimation(UIElement.OpacityProperty, null);
-            picker.Visibility = Visibility.Collapsed;
+            if (picker.Visibility == Visibility.Visible) AnimateMarketTransition(true);
         }
         void ShowMarketSettings(bool search)
         {
@@ -101,6 +99,7 @@ namespace OrbitCalendar
             Get<Button>("SearchMarkets").Background = search ? activeTab : Brushes.Transparent;
             Get<TextBlock>("MarketMessage").Text = search ? "名前・愛称・コードを入力" : "登録順に株価タブへ表示します";
             DrawMarketSettings();
+            AnimateMarketTransition(false);
         }
         void DrawMarketSettings()
         {
@@ -120,7 +119,7 @@ namespace OrbitCalendar
             foreach (var result in results.Skip(marketPage * 3).Take(3))
             {
                 Instrument item = result;
-                var grid = new Grid { Height = 66, Margin = new Thickness(0, 0, 0, 2) };
+                var grid = new Grid { Height = 60, Margin = new Thickness(0, 0, 0, 2) };
                 grid.ColumnDefinitions.Add(new ColumnDefinition());
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
                 var text = new StackPanel { Margin = new Thickness(5, 3, 3, 3) };

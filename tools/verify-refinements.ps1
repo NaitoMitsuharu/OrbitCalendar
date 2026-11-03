@@ -23,8 +23,8 @@ try{
  Assert ($null -eq $root.FindName('CloseButton')) 'Close button remains'
  $end=[DateTime]::UtcNow.AddSeconds(30);while($pt.GetField('updatingToday',$if).GetValue($panel)){Pump 100;if([DateTime]::UtcNow -gt $end){throw 'Calendar weather timeout'}}
  Assert ($root.FindName('TodayHigh').Text -match '\d' -and $root.FindName('TodayLow').Text -match '\d') 'Calendar high/low missing'
- $panel.UpdateTimerProgress(.25,$true);Pump 150;Assert ($root.FindName('TimerProgress').Width -eq 26) 'Timer 25% gauge incorrect';Snapshot 'timer-calendar.png'
- $panel.UpdateTimerProgress(.75,$true);Pump 150;Assert ($root.FindName('TimerProgress').Width -eq 78) 'Timer gauge did not increase';$panel.UpdateTimerProgress(0,$false)
+ $panel.UpdateTimerProgress(.25,$true);Pump 150;Assert ([Math]::Abs($root.FindName('TimerProgress').Width-91.6) -lt .01) 'Timer 25% gauge incorrect';Snapshot 'timer-calendar.png'
+ $panel.UpdateTimerProgress(.75,$true);Pump 150;Assert ([Math]::Abs($root.FindName('TimerProgress').Width-274.8) -lt .01) 'Timer gauge did not increase';$panel.UpdateTimerProgress(0,$false)
  $mini=[Activator]::CreateInstance($a.GetType('OrbitCalendar.ParticleTimer'),[object[]]@([Action]{}));$mini.Width=188;$mini.Height=52;$mini.Update('05:00',.5);$mini.Width=$mini.PreferredWidth;$mini.Show();Pump 1800
  $mt=$mini.GetType();$effect=$mt.GetField('effect',$if).GetValue($mini);Assert ($effect.GetType().GetField('grains',$if).GetValue($effect).Length -gt 100) 'Compact timer is not particle rendered'
  Assert ($mt.GetField('glass',$if).GetValue($mini).Progress -eq .5 -and $mt.GetField('gauge',$if).GetValue($mini).Height -eq 15) 'Hourglass/progress not synchronized'

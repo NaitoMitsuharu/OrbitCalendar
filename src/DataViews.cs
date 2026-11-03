@@ -100,7 +100,7 @@ namespace OrbitCalendar
             else LoadView(false);
         }
 
-        public double PreferredHeight { get { return mode == 2 ? 612 : 542; } }
+        public double PreferredHeight { get { return mode == 2 && !showDailyWeather ? 574 : 542; } }
 
         async void LoadView(bool force)
         {

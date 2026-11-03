@@ -51,7 +51,8 @@ namespace OrbitCalendar
         {
             dataLoadingOwner = owner;
             var host = Get<Grid>("LoadingArea");
-            var choices = PanelBounds(Get<Grid>("DataChoices"));
+            var toolbar = Get<Grid>("DataChoices");
+            var choices = PanelBounds(toolbar.Visibility == Visibility.Visible ? toolbar : Get<Grid>("DataStampRow"));
             double rowTop = Get<Grid>("Face").RowDefinitions[0].ActualHeight;
             host.Margin = new Thickness(14, Math.Max(0, choices.Bottom - rowTop + 2), 14, 14);
             host.Visibility = Visibility.Visible;

@@ -121,17 +121,11 @@ namespace OrbitCalendar
             effect.Stop();
             selected = date;
             DrawDates();
-            if (changeMonth)
-            {
-                UpdateLayout();
-                var gauge = PanelBounds(Get<Border>("YearGauge"));
-                gauge.Width = 422;
-                effect.StartCalendarChange(new[] {
-                    PanelBounds(Get<TextBlock>("Year")), PanelBounds(Get<TextBlock>("Month")), PanelBounds(dates),
-                    PanelBounds(Get<TextBlock>("SelectedDate")), PanelBounds(Get<TextBlock>("HolidayName")),
-                    gauge });
-            }
-            else effect.Refresh();
+            UpdateLayout();
+            var gauge = PanelBounds(Get<Border>("YearGauge")); gauge.Width = 422;
+            var regions = new System.Collections.Generic.List<Rect> { PanelBounds(dates), PanelBounds(Get<TextBlock>("SelectedDate")), PanelBounds(Get<TextBlock>("HolidayName")), gauge };
+            if (changeMonth) { regions.Add(PanelBounds(Get<TextBlock>("Year"))); regions.Add(PanelBounds(Get<TextBlock>("Month"))); }
+            effect.StartCalendarChange(regions.ToArray());
         }
 
         void Place(UIElement item, int col, int row)

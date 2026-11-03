@@ -78,7 +78,7 @@ namespace OrbitCalendar
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             candidatePlace = null;
             Get<Canvas>("Plot").Cursor = Cursors.Arrow;
-            Get<Button>("PickPlace").Content = "地点を指定";
+            Get<Button>("PickPlace").Content = "地点指定";
             Get<Border>("PlaceConfirm").Visibility = Visibility.Collapsed;
             if (activeWeather != null && mode == 2)
             {

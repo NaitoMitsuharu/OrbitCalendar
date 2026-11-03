@@ -47,7 +47,7 @@ namespace OrbitCalendar
             SetVisible("NewsCategories", false);
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", true); SetVisible("WeatherSwitch", true);
             foreach (string name in new[] { "Plot", "TemperaturePlot", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
-            SetVisible("DataChoices", true); SetVisible("RegionChoices", false); SetVisible("DataSource", false);
+            SetVisible("DataChoices", false); SetVisible("RegionChoices", false); SetVisible("DataSource", false);
             Get<Button>("RainMode").Background = Brushes.Transparent; Get<Button>("DailyMode").Background = activeTab;
             Get<TextBlock>("SectionLabel").Text = "WEATHER";
             SetVisible("MarketRange", false);
@@ -107,7 +107,7 @@ namespace OrbitCalendar
             }
             body.Children.Add(cards);
             body.Children.Add(WeatherText(days[forecastDay] + "の気温と降水確率", 15, "#86E8DE"));
-            var chart = new Canvas { Width = 414, Height = 146, Margin = new Thickness(0, 12, 0, 8) }; body.Children.Add(chart);
+            var chart = new Canvas { Width = 414, Height = 132, Margin = new Thickness(0, 12, 0, 8) }; body.Children.Add(chart);
             DateTime dateStart = LiveData.WeatherForecast.Utc(d.time[forecastDay]);
             var h = f.hourly;
             if (h == null || h.time == null || h.temperature_2m == null) { chart.Children.Add(WeatherText("時間別の気温を取得できません", 13, "#B3CAD2")); return; }
@@ -121,19 +121,19 @@ namespace OrbitCalendar
                 double x = 28 + (LiveData.WeatherForecast.Utc(h.time[i]) - dateStart).TotalHours / 23 * 366;
                 if (h.precipitation_probability != null && i < h.precipitation_probability.Length && h.precipitation_probability[i].HasValue)
                 {
-                    double height = Math.Max(0, Math.Min(100, h.precipitation_probability[i].Value)) * .9;
+                    double height = Math.Max(0, Math.Min(100, h.precipitation_probability[i].Value)) * .8;
                     var bar = new Rectangle { Width = 10, Height = height, Fill = Art.Ink("#24515F"), ToolTip = LiveData.WeatherForecast.Utc(h.time[i]).AddHours(9).ToString("HH:mm") + " 降水 " + Value(h.precipitation_probability[i], "%") };
-                    Canvas.SetLeft(bar, x - 5); Canvas.SetTop(bar, 112 - height); chart.Children.Add(bar);
+                    Canvas.SetLeft(bar, x - 5); Canvas.SetTop(bar, 104 - height); chart.Children.Add(bar);
                 }
-                if (h.temperature_2m[i].HasValue) line.Points.Add(new Point(x, 100 - (h.temperature_2m[i].Value - low) / (high - low) * 85));
+                if (h.temperature_2m[i].HasValue) line.Points.Add(new Point(x, 92 - (h.temperature_2m[i].Value - low) / (high - low) * 77));
             }
             chart.Children.Add(line);
             foreach (int hour in new[] { 0, 6, 12, 18, 23 })
             {
-                var text = WeatherText(hour.ToString("00") + ":00", 11, "#A6C8D0"); Canvas.SetLeft(text, Math.Min(377, 18 + hour / 23.0 * 366)); Canvas.SetTop(text, 122); chart.Children.Add(text);
+                var text = WeatherText(hour.ToString("00") + ":00", 11, "#A6C8D0"); Canvas.SetLeft(text, Math.Min(377, 18 + hour / 23.0 * 366)); Canvas.SetTop(text, 110); chart.Children.Add(text);
             }
             var bounds = WeatherText(high.ToString("0") + "°", 11, "#F4B09F"); chart.Children.Add(bounds);
-            var bottom = WeatherText(low.ToString("0") + "°", 11, "#F4B09F"); Canvas.SetTop(bottom, 94); chart.Children.Add(bottom);
+            var bottom = WeatherText(low.ToString("0") + "°", 11, "#F4B09F"); Canvas.SetTop(bottom, 86); chart.Children.Add(bottom);
             body.Children.Add(WeatherText("線：気温 (°C)     棒：降水確率 (0–100%)", 12, "#B3CAD2"));
 
         }
