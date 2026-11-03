@@ -72,10 +72,19 @@ namespace OrbitCalendar
             for (int i = 0; i < seeds.Length; i++)
             {
                 var seed = seeds[i]; double t = (Phase / 3.8 + seed.Delay) % 1;
+                if (Preferences.LoadingMotion == 2) t = (Phase / 3.8 + seed.Target.X / Width * .3) % 1;
                 double gather = t < .48 ? Ease(t / .48) : t < .68 ? 1 : 1 - Ease((t - .68) / .32);
-                if (!SystemParameters.ClientAreaAnimation) gather = 1;
                 double x = seed.Origin.X + Math.Sin(Phase * 1.1 + i * .73) * 8;
                 double y = seed.Origin.Y + Math.Cos(Phase * .9 + i * 1.13) * 6;
+                if (Preferences.LoadingMotion == 1)
+                {
+                    double angle = Math.Atan2(y - 58, x - 102) + (1 - gather) * Math.PI * 2;
+                    double radius = new Vector(x - 102, y - 58).Length;
+                    x = 102 + Math.Cos(angle) * radius; y = 58 + Math.Sin(angle) * radius * .6;
+                }
+                else if (Preferences.LoadingMotion == 2) y += Math.Sin(Phase * 4 + seed.Target.X * .06) * 14;
+                else if (Preferences.LoadingMotion == 3) gather = .74 + .19 * Math.Sin(Phase * 1.3 + seed.Delay * 9);
+                if (!SystemParameters.ClientAreaAnimation) gather = 1;
                 var point = new Point(x + (seed.Target.X - x) * gather, y + (seed.Target.Y - y) * gather);
                 double r = Preferences.Pattern == 3 && i % 7 == 0 ? seed.Size * 1.3 : seed.Size;
                 if (Preferences.Pattern == 1) dc.DrawRectangle(inks[seed.Ink], null, new Rect(point.X - r, point.Y - r, r * 1.7, r * 1.7));
@@ -88,14 +97,26 @@ namespace OrbitCalendar
     {
         readonly DispatcherTimer loadingAnimation = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         readonly System.Diagnostics.Stopwatch loadingClock = System.Diagnostics.Stopwatch.StartNew();
-        ParticleLoading mainLoadingParticles, newsLoadingParticles;
+        readonly System.Diagnostics.Stopwatch previewLoadingClock = new System.Diagnostics.Stopwatch();
+        ParticleLoading mainLoadingParticles, newsLoadingParticles, settingsLoadingParticles;
         CancellationTokenSource dataLoadingOwner;
         void InitializeLoading()
         {
             mainLoadingParticles = new ParticleLoading(); Get<Grid>("LoadingArea").Children.Add(mainLoadingParticles);
+            settingsLoadingParticles = new ParticleLoading(); Get<Grid>("LoadingPreview").Children.Add(settingsLoadingParticles);
             loadingAnimation.Tick += delegate
             {
-                if (!IsVisible || IsClosing || mode < 1) return;
+                if (!IsVisible || IsClosing || !SystemParameters.ClientAreaAnimation) return;
+                if (Get<Border>("SettingsPicker").Visibility == Visibility.Visible)
+                {
+                    if (showLoadingSettings)
+                    {
+                        settingsLoadingParticles.Phase = previewLoadingClock.Elapsed.TotalSeconds; settingsLoadingParticles.InvalidateVisual();
+                        effect.RefreshArea(PanelBounds(Get<Border>("LoadingPreviewArea")));
+                    }
+                    return;
+                }
+                if (mode < 1) return;
                 var dots = dataLoadingOwner != null ? mainLoadingParticles : mode == 3 && newsPreview != null ? newsLoadingParticles : null;
                 if (dots == null || !dots.IsVisible || !SystemParameters.ClientAreaAnimation) return;
                 dots.Phase = loadingClock.Elapsed.TotalSeconds; dots.InvalidateVisual();

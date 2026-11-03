@@ -159,6 +159,8 @@
           </Grid>
           <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
           <UniformGrid Name="PatternChoices" Columns="4"/>
+          <StackPanel Orientation="Horizontal" Margin="4,9,4,3"><Button Name="SettingsTransition" Content="画面切り替え"/><Button Name="SettingsLoading" Content="読み込み中" Margin="6,0,0,0"/></StackPanel>
+          <Grid Height="256"><StackPanel Name="TransitionSettings">
           <TextBlock Text="組み上がり方" Foreground="#92B5BE" FontSize="12" Margin="4,9,0,3"/>
           <UniformGrid Name="MotionChoices" Columns="3"/>
           <Border Name="PreviewArea" BorderBrush="#2A5965" BorderThickness="1" CornerRadius="6" Padding="12" Margin="4,10,4,3">
@@ -168,6 +170,11 @@
               <TextBlock Text="08   09   10   11   12   13   14" Foreground="#DBEDF0" FontFamily="Consolas" FontSize="14" HorizontalAlignment="Center"/>
             </StackPanel>
           </Border>
+          </StackPanel><StackPanel Name="LoadingSettings" Visibility="Collapsed">
+            <TextBlock Text="読み込み中の動き" Foreground="#92B5BE" FontSize="12" Margin="4,9,0,3"/>
+            <UniformGrid Name="LoadingChoices" Columns="2"/>
+            <Border Name="LoadingPreviewArea" Height="132" BorderBrush="#2A5965" BorderThickness="1" CornerRadius="6" Margin="4,10,4,3"><Grid Name="LoadingPreview" ClipToBounds="True"/></Border>
+          </StackPanel></Grid>
           <Grid><Button Name="ReplayPreview" Content="▶  もう一度プレビュー" HorizontalAlignment="Left" Foreground="#8FE4DD" Margin="4,3"/><Button Name="OpenCredits" Content="データ出典" HorizontalAlignment="Right" Margin="4,3" Foreground="#92B5BE"/></Grid>
         </StackPanel>
       </Border>
