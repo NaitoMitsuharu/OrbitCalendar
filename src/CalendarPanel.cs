@@ -42,10 +42,11 @@ namespace OrbitCalendar
             var earthTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(125) };
             earthTick.Tick += delegate
             {
-                if (!SystemParameters.ClientAreaAnimation || mode != 0 || effect.Busy) return;
+                var globeArea = new Rect(322, 53, 95, 94);
+                if (!SystemParameters.ClientAreaAnimation || mode != 0 || !effect.CanRefreshArea(globeArea)) return;
                 earth.Rotation = rotation.Elapsed.TotalSeconds * .14;
                 earth.InvalidateVisual();
-                effect.RefreshArea(new Rect(322, 53, 95, 94));
+                effect.RefreshArea(globeArea);
             };
             IsVisibleChanged += delegate
             {
@@ -116,7 +117,16 @@ namespace OrbitCalendar
             effect.Stop();
             selected = date;
             DrawDates();
-            if (changeMonth) { UpdateLayout(); effect.Start(true); }
+            if (changeMonth)
+            {
+                UpdateLayout();
+                var gauge = PanelBounds(Get<Border>("YearGauge"));
+                gauge.Width = 422;
+                effect.StartCalendarChange(new[] {
+                    PanelBounds(Get<TextBlock>("Year")), PanelBounds(Get<TextBlock>("Month")), PanelBounds(dates),
+                    PanelBounds(Get<TextBlock>("SelectedDate")), PanelBounds(Get<TextBlock>("HolidayName")),
+                    gauge });
+            }
             else effect.Refresh();
         }
 
@@ -145,7 +155,10 @@ namespace OrbitCalendar
                 var labels = new Border { CornerRadius = new CornerRadius(4) };
                 var dayColor = col == 6 ? blue : col == 7 ? red : muted;
                 if (col == IsoDay(selected)) labels.Background = Art.Ink("#23505E");
-                labels.Child = Label(col.ToString("00"), col == IsoDay(selected) ? aqua : dayColor, 14);
+                var number = Label(col.ToString(CultureInfo.InvariantCulture), col == IsoDay(selected) ? aqua : dayColor, 12);
+                number.FontFamily = new FontFamily("Consolas");
+                labels.Child = number;
+                AutomationProperties.SetName(labels, "曜日番号 " + col);
                 Place(labels, col, 0);
             }
             var first = new DateTime(selected.Year, selected.Month, 1);

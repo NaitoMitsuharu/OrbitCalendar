@@ -47,8 +47,6 @@
             <TextBlock Text="月" FontSize="19" FontWeight="SemiBold" Margin="6,9,0,0" VerticalAlignment="Center"/>
           </StackPanel>
         </StackPanel>
-        <TextBlock Name="TodayWeather" Text="" FontSize="29" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E"
-                   HorizontalAlignment="Left" VerticalAlignment="Top" Margin="140,23,0,0"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,156,10">
           <Button Name="Previous" Content="‹" Width="30" Height="27" FontFamily="Segoe UI" FontSize="18" Padding="0" Background="#1C3E49" ToolTip="前の月" AutomationProperties.Name="前の月"/>
           <Button Name="Today" Content="今日" Margin="4,0" Background="#1C3E49" Padding="10,2"/>
@@ -58,7 +56,11 @@
       <Grid Name="Dates" Grid.Row="1" Margin="16,10,16,8"/>
       <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid>
-          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center"/>
+            <TextBlock Name="TodayWeather" Text="" FontSize="26" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E"
+                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+          </StackPanel>
           <TextBlock Name="HolidayName" FontSize="13" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </Grid>
       </Border>

@@ -82,43 +82,71 @@ namespace OrbitCalendar
 
         public void StartArea(Rect area, bool restart = false) { Start(!restart, area); }
 
-        void Start(bool fromPrevious, Rect area)
+        public void StartCalendarChange(Rect[] regions) { Start(true, new Rect(face.RenderSize), regions); }
+
+        static bool InRegions(Point point, Rect area, Rect[] regions)
+        {
+            if (!area.Contains(point)) return false;
+            if (regions == null) return true;
+            foreach (var region in regions) if (region.Contains(point)) return true;
+            return false;
+        }
+
+        void Start(bool fromPrevious, Rect area, Rect[] regions = null)
         {
             motionStyle = Preferences.Motion == 0 ? (++sequence % 5) + 1 : Preferences.Motion;
             dirty = false;
-            var old = grains;
-            if (old != null && area.Width < face.RenderSize.Width)
-            {
-                var local = new List<Grain>();
-                foreach (var grain in old) if (area.Contains(grain.Target)) local.Add(grain);
-                old = local.ToArray();
-            }
+            var previous = grains;
+            var oldByPixel = new Dictionary<int, Grain>();
+            int width = (int)face.RenderSize.Width;
+            if (previous != null)
+                foreach (var grain in previous) oldByPixel[(int)grain.Target.Y * width + (int)grain.Target.X] = grain;
             Stop();
             face.UpdateLayout();
             grains = Sample();
             if (grains.Length == 0) return;
-            morph = fromPrevious && old != null && old.Length > 0;
+            var fixedPixels = new HashSet<int>();
+            int movingCount = 0;
             for (int i = 0; i < grains.Length; i++)
             {
-                // Roughly equal area per speck. Latitude bands on the inner shell
-                // and a few eccentric outer orbits make the rotation legible.
-                grains[i].Moving = area.Contains(grains[i].Target);
+                int key = (int)grains[i].Target.Y * width + (int)grains[i].Target.X;
+                Grain prior;
+                bool unchanged = fromPrevious && oldByPixel.TryGetValue(key, out prior) &&
+                    prior.Ink == grains[i].Ink && (prior.Current - prior.Target).LengthSquared < .25;
+                grains[i].Moving = InRegions(grains[i].Target, area, regions) && !unchanged;
+                if (grains[i].Moving) movingCount++;
+                else fixedPixels.Add(key);
+            }
+            var origins = new List<Grain>();
+            if (fromPrevious && previous != null)
+                foreach (var grain in previous)
+                {
+                    int key = (int)grain.Target.Y * width + (int)grain.Target.X;
+                    if (InRegions(grain.Target, area, regions) && !fixedPixels.Contains(key)) origins.Add(grain);
+                }
+            morph = fromPrevious && origins.Count > 0;
+            int movingIndex = 0;
+            for (int i = 0; i < grains.Length; i++)
+            {
+                if (!grains[i].Moving) { grains[i].Current = grains[i].Target; continue; }
                 double lat = Math.Asin(2 * random.NextDouble() - 1);
                 grains[i].Latitude = i % 4 == 0 ? lat : Math.Round(lat * 16) / 16;
                 grains[i].Longitude = random.NextDouble() * 2 * Math.PI;
                 grains[i].Radius = i % 7 == 0 ? 102 + random.NextDouble() * 51 : 82 + random.NextDouble() * 3;
                 grains[i].Speed = i % 7 == 0 ? -2 : 2.5;
                 grains[i].Lag = random.NextDouble() * .25;
-                if (morph) grains[i].Origin = old[(int)((long)i * old.Length / grains.Length)].Current;
+                if (morph) grains[i].Origin = origins[(int)((long)movingIndex * origins.Count / movingCount)].Current;
                 else
                 {
                     double angle = grains[i].Longitude;
-                    grains[i].Origin = new Point(grains[i].Target.X * .28 + 420 * .72 + Math.Cos(angle) * 65,
-                        grains[i].Target.Y * .28 + 535 * .72 + Math.Sin(angle) * 65);
+                    double spread = Math.Sqrt(-2 * Math.Log(Math.Max(1e-9, random.NextDouble()))) * 28;
+                    grains[i].Origin = new Point(grains[i].Target.X * .28 + 420 * .72 + Math.Cos(angle) * spread,
+                        grains[i].Target.Y * .28 + 535 * .72 + Math.Sin(angle) * spread);
                 }
                 if (area.Width < face.RenderSize.Width && !morph)
                     grains[i].Origin = new Point(area.Right - 8 - random.NextDouble() * Math.Min(65, area.Width),
                         area.Bottom - 5 - random.NextDouble() * Math.Min(25, area.Height));
+                movingIndex++;
             }
             int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
             if (layer == null || layer.PixelWidth != w || layer.PixelHeight != h)
@@ -126,7 +154,7 @@ namespace OrbitCalendar
                 layer = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
                 raster = new int[w * h];
             }
-            assembling = SystemParameters.ClientAreaAnimation;
+            assembling = SystemParameters.ClientAreaAnimation && movingCount > 0;
             seconds = 0;
             watch.Restart();
             Paint();
@@ -242,9 +270,17 @@ namespace OrbitCalendar
             InvalidateVisual();
         }
 
+        public bool CanRefreshArea(Rect area)
+        {
+            if (layer == null || !IsVisible || Closing || grains == null) return false;
+            if (assembling)
+                foreach (var grain in grains) if (grain.Moving && area.Contains(grain.Target)) return false;
+            return true;
+        }
+
         public void RefreshArea(Rect area)
         {
-            if (layer == null || !IsVisible || Busy || grains == null) return;
+            if (!CanRefreshArea(area)) return;
             face.UpdateLayout();
             var updated = new List<Grain>();
             foreach (var grain in grains) if (!area.Contains(grain.Target)) updated.Add(grain);
