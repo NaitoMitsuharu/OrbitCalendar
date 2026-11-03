@@ -27,7 +27,8 @@ namespace OrbitCalendar
         public bool Closing { get { return onDismissed != null; } }
         double seconds;
         bool assembling, morph, rendering, dirty;
-        const double Gather = .85;
+        int motionStyle, sequence;
+        const double Gather = 1.05;
 
         public AssemblyEffect(UIElement face, UIElement surface)
         {
@@ -54,6 +55,9 @@ namespace OrbitCalendar
                     // strokes of kana and small numbers on a 1x display.
                     double light = (x % 2 == 0 && y % 2 == 0) ? 1.12 :
                         (x % 2 == 1 && y % 2 == 1) ? .42 : .90;
+                    if (Preferences.Pattern == 1) light = x % 3 == 0 && y % 3 == 0 ? 1.15 : .42;
+                    else if (Preferences.Pattern == 2) light = y % 3 == 0 ? 1.12 : .45;
+                    else if (Preferences.Pattern == 3) light = ((x * 17 + y * 31) % 11 < 3) ? 1.3 : .66;
                     dots.Add(new Grain { Target = new Point(x, y), Ink = Color.FromRgb(
                         (byte)Math.Min(255, r * light), (byte)Math.Min(255, g * light), (byte)Math.Min(255, b * light)) });
                 }
@@ -62,6 +66,7 @@ namespace OrbitCalendar
 
         public void Start(bool fromPrevious)
         {
+            motionStyle = Preferences.Motion == 0 ? (++sequence % 5) + 1 : Preferences.Motion;
             dirty = false;
             var old = grains;
             Stop();
@@ -78,7 +83,7 @@ namespace OrbitCalendar
                 grains[i].Longitude = random.NextDouble() * 2 * Math.PI;
                 grains[i].Radius = i % 7 == 0 ? 102 + random.NextDouble() * 51 : 82 + random.NextDouble() * 3;
                 grains[i].Speed = i % 7 == 0 ? -2 : 2.5;
-                grains[i].Lag = random.NextDouble() * .24;
+                grains[i].Lag = random.NextDouble() * .25;
                 if (morph) grains[i].Origin = old[(int)((long)i * old.Length / grains.Length)].Target;
             }
             int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
@@ -127,10 +132,39 @@ namespace OrbitCalendar
                     double angle = g.Longitude + seconds * g.Speed;
                     double ring = Math.Cos(g.Latitude) * g.Radius;
                     double x = Math.Sin(angle) * ring, y = Math.Sin(g.Latitude) * g.Radius;
-                    double t = morph ? Ease((seconds - g.Lag * .30) / .46) : Ease((seconds - .31 - g.Lag) / Gather);
-                    double ox = morph ? g.Origin.X : .5 * w + .94 * x + .34 * y;
-                    double oy = morph ? g.Origin.Y : .50 * h + .94 * y - .34 * x;
-                    double curl = Math.Sin(t * Math.PI) * (morph ? 11 : 39);
+                    double t = Ease((seconds - .38 - g.Lag) / Gather);
+                    double ox = .5 * w + .94 * x + .34 * y;
+                    double oy = .50 * h + .94 * y - .34 * x;
+                    if (motionStyle == 2)
+                    {
+                        double spiral = g.Longitude + seconds * (3 + g.Lag * 8);
+                        double radius = 35 + Math.Abs(g.Latitude) * 175;
+                        ox = w * .5 + Math.Cos(spiral) * radius;
+                        oy = h * .5 + Math.Sin(spiral) * radius;
+                    }
+                    else if (motionStyle == 3)
+                    {
+                        ox = (g.Longitude / (2 * Math.PI)) * w;
+                        oy = ((seconds * 280 + g.Latitude * h * 2) % (h + 180)) - 120;
+                    }
+                    else if (motionStyle == 4)
+                    {
+                        double radius = 50 + seconds * 240;
+                        ox = w * .5 + Math.Cos(g.Longitude) * radius;
+                        oy = h * .5 + Math.Sin(g.Longitude) * radius;
+                    }
+                    else if (motionStyle == 5)
+                    {
+                        ox = g.Longitude / (2 * Math.PI) * w;
+                        oy = h * .5 + Math.Sin(ox / 47 + seconds * 5) * (55 + Math.Abs(g.Latitude) * 100);
+                    }
+                    if (morph)
+                    {
+                        double scatter = Ease(seconds / .35);
+                        ox = g.Origin.X + (ox - g.Origin.X) * scatter;
+                        oy = g.Origin.Y + (oy - g.Origin.Y) * scatter;
+                    }
+                    double curl = Math.Sin(t * Math.PI) * 24;
                     px = ox + (px - ox) * t + Math.Sin(angle) * curl;
                     py = oy + (py - oy) * t + Math.Cos(angle) * curl;
                     double light = .63 + .32 * Math.Cos(angle) * ring / g.Radius;
@@ -207,7 +241,7 @@ namespace OrbitCalendar
                     return;
                 }
             }
-            else if (seconds >= (morph ? .55 : 1.42)) Stop();
+            else if (seconds >= 1.75) Stop();
             if (dirty && !assembling && !Closing) { dirty = false; face.UpdateLayout(); grains = Sample(); }
             Paint();
         }

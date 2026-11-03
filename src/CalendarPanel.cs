@@ -18,7 +18,7 @@ namespace OrbitCalendar
         readonly CultureInfo ja = CultureInfo.GetCultureInfo("ja-JP");
         readonly Brush aqua = Art.Ink("#7BE5DA"), muted = Art.Ink("#96ADB8"), lines = Art.Ink("#203A46");
         DateTime selected = DateTime.Today, today = DateTime.Today;
-        DateTime copiedUntil;
+        int wheelDelta;
         int holidayRevision;
 
         T Get<T>(string name) where T : FrameworkElement { return (T)root.FindName(name); }
@@ -41,7 +41,16 @@ namespace OrbitCalendar
             Get<Button>("Today").Click += delegate { SelectDate(DateTime.Today); };
             Get<Button>("CloseButton").Click += delegate { collapse(); };
             Get<Button>("FocusButton").Click += delegate { toggleFocus(); };
-            Get<Button>("Copy").Click += delegate { CopyDate(); };
+            InitializeControls();
+            PreviewMouseWheel += delegate(object sender, MouseWheelEventArgs e)
+            {
+                if (mode != 0 || IsClosing) return;
+                wheelDelta += e.Delta;
+                int months = wheelDelta / 120;
+                wheelDelta %= 120;
+                if (months != 0) MoveMonth(-months);
+                e.Handled = true;
+            };
             PreviewKeyDown += OnKey;
             IsVisibleChanged += delegate { if (!IsVisible) effect.Stop(); };
             for (int c = 0; c < 8; c++) dates.ColumnDefinitions.Add(new ColumnDefinition { Width = c == 0 ? new GridLength(37) : new GridLength(1, GridUnitType.Star) });
@@ -58,19 +67,8 @@ namespace OrbitCalendar
             else if (e.Key == Key.PageUp) MoveMonth(-1);
             else if (e.Key == Key.PageDown) MoveMonth(1);
             else if (e.Key == Key.Home) SelectDate(DateTime.Today);
-            else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control) CopyDate();
             else return;
             e.Handled = true;
-        }
-
-        void CopyDate()
-        {
-            string label;
-            try { Clipboard.SetText(selected.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)); label = "コピー済み ✓"; }
-            catch (System.Runtime.InteropServices.ExternalException) { label = "再試行してください"; }
-            Get<Button>("Copy").Content = label;
-            copiedUntil = DateTime.UtcNow.AddSeconds(2);
-            effect.Refresh();
         }
 
         internal static int IsoDay(DateTime date) { return ((int)date.DayOfWeek + 6) % 7 + 1; }
@@ -115,16 +113,14 @@ namespace OrbitCalendar
             dates.Children.Clear();
             Get<TextBlock>("Year").Text = selected.ToString("yyyy", CultureInfo.InvariantCulture) + "   /   " + selected.ToString("MMMM", CultureInfo.InvariantCulture).ToUpperInvariant();
             Get<TextBlock>("Month").Text = selected.Month.ToString("00");
-            Place(Label("週", muted, 11), 0, 0);
-            string[] days = { "月", "火", "水", "木", "金", "土", "日" };
             var blue = Art.Ink("#8EC5FF");
             var red = Art.Ink("#FF9699");
             for (int col = 1; col <= 7; col++)
             {
-                var labels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                var labels = new Border { CornerRadius = new CornerRadius(4) };
                 var dayColor = col == 6 ? blue : col == 7 ? red : muted;
-                labels.Children.Add(Label(col.ToString("00"), dayColor, 11));
-                labels.Children.Add(Label(days[col - 1], col > 5 ? dayColor : Brushes.WhiteSmoke, 13));
+                if (col == IsoDay(selected)) labels.Background = Art.Ink("#23505E");
+                labels.Child = Label(col.ToString("00"), col == IsoDay(selected) ? aqua : dayColor, 14);
                 Place(labels, col, 0);
             }
             var first = new DateTime(selected.Year, selected.Month, 1);
@@ -164,12 +160,10 @@ namespace OrbitCalendar
                     }
                 }
             }
-            Get<TextBlock>("SelectedLabel").Text = "SELECTED    /    W" + IsoWeek(selected).ToString("00");
-            Get<TextBlock>("SelectedDate").Text = selected.ToString("M月d日  dddd", ja);
-            var selectedHoliday = Holidays.Name(selected);
-            if (selectedHoliday != null) Get<TextBlock>("SelectedLabel").Text += "    /    " + selectedHoliday;
-            Get<TextBlock>("DayCount").Text = "DAY  " + selected.DayOfYear.ToString("000") + "  /  " + (DateTime.IsLeapYear(selected.Year) ? "366" : "365");
-            Get<Button>("Copy").Content = "日付をコピー";
+            Get<TextBlock>("SelectedDate").Text = "W" + IsoWeek(selected).ToString("00") + "." + IsoDay(selected);
+            Get<TextBlock>("HolidayName").Text = Holidays.Name(selected) ?? "";
+            Get<Border>("YearGauge").Width = 422.0 * selected.DayOfYear / (DateTime.IsLeapYear(selected.Year) ? 366 : 365);
+
         }
 
         public bool IsClosing { get { return effect.Closing; } }
@@ -206,17 +200,12 @@ namespace OrbitCalendar
                 DrawDates();
                 effect.Refresh();
             }
-            if (copiedUntil != default(DateTime) && DateTime.UtcNow >= copiedUntil)
-            {
-                copiedUntil = default(DateTime);
-                Get<Button>("Copy").Content = "日付をコピー";
-                if (mode == 0) effect.Refresh();
-            }
-            var label = focus.Length == 0 ? "▶   集中 25 分" : "■   集中  " + focus;
-            var button = Get<Button>("FocusButton");
+            var button = Get<Button>("TimerDuration");
+            string label = focus.Length == 0 ? TimerMinutes + " 分" : focus;
             if (!Equals(label, button.Content))
             {
                 button.Content = label;
+                Get<Button>("FocusButton").Content = focus.Length == 0 ? "▶" : "■";
                 if (mode == 0) effect.Refresh();
             }
         }

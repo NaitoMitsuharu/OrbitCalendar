@@ -15,6 +15,10 @@ namespace OrbitCalendar
         readonly int[] choice = new int[3];
         readonly Dictionary<int, LiveData.View> saved = new Dictionary<int, LiveData.View>();
         int mode;
+        LiveData.View[] radarFrames;
+        bool updatingTimeline;
+        readonly System.Windows.Threading.DispatcherTimer radarPlayback = new System.Windows.Threading.DispatcherTimer();
+
         CancellationTokenSource loading;
         DateTime nextUpdate;
         Button[] tabs, choices;
@@ -25,6 +29,25 @@ namespace OrbitCalendar
             tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab") };
             choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3") };
             tabs[0].Background = activeTab;
+            radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
+            radarPlayback.Tick += delegate
+            {
+                var slider = Get<Slider>("RadarTime");
+                slider.Value = slider.Value >= slider.Maximum ? 0 : slider.Value + 1;
+            };
+            Get<Button>("RadarPlay").Click += delegate
+            {
+                if (radarFrames == null || radarFrames.Length < 2) return;
+                if (radarPlayback.IsEnabled) StopRadar();
+                else { radarPlayback.Start(); Get<Button>("RadarPlay").Content = "■"; effect.Refresh(); }
+            };
+            Get<Slider>("RadarTime").ValueChanged += delegate
+            {
+                if (updatingTimeline || radarFrames == null || mode != 2) return;
+                ShowRadarFrame((int)Get<Slider>("RadarTime").Value);
+            };
+            IsVisibleChanged += delegate { if (!IsVisible) StopRadar(); };
+
             for (int i = 0; i < choices.Length; i++)
             {
                 int value = i;
@@ -45,6 +68,7 @@ namespace OrbitCalendar
 
         void SwitchView(int value)
         {
+            StopRadar();
             if (loading != null) loading.Cancel();
             mode = value;
             for (int i = 0; i < tabs.Length; i++) tabs[i].Background = i == mode ? activeTab : Brushes.Transparent;
@@ -61,7 +85,9 @@ namespace OrbitCalendar
             var request = new CancellationTokenSource();
             loading = request;
             int index = choice[mode], key = mode * 10 + index;
+            StopRadar();
             bool market = mode == 1;
+            Get<StackPanel>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             var names = market ? LiveData.MarketNames : LiveData.Regions;
             var stamp = Get<TextBlock>("DataStamp");
             var refresh = Get<Button>("RefreshData");
@@ -82,6 +108,9 @@ namespace OrbitCalendar
                 if (view != null) ShowData(view);
                 else
                 {
+                    radarFrames = null;
+                    Get<Button>("RadarPlay").IsEnabled = false;
+                    Get<Slider>("RadarTime").IsEnabled = false;
                     Get<Canvas>("Plot").Children.Clear();
                     Get<TextBlock>("DataTitle").Text = names[index];
                     Get<TextBlock>("PlotCaption").Text = "";
@@ -123,6 +152,23 @@ namespace OrbitCalendar
             }
         }
 
+        void StopRadar()
+        {
+            radarPlayback.Stop();
+            Get<Button>("RadarPlay").Content = "▶";
+        }
+
+        void ShowRadarFrame(int index)
+        {
+            var frame = radarFrames[index];
+            var plot = Get<Canvas>("Plot");
+            plot.Children.Clear();
+            plot.Children.Add(new Image { Source = frame.Map });
+            Get<TextBlock>("DataStamp").Text = frame.Stamp;
+            Get<TextBlock>("RadarClock").Text = frame.Stamp.Substring(11, 5);
+            effect.Refresh();
+        }
+
         void ShowData(LiveData.View view)
         {
             Get<TextBlock>("DataTitle").Text = view.Heading;
@@ -130,11 +176,23 @@ namespace OrbitCalendar
             Get<TextBlock>("PlotCaption").Text = view.Caption;
             var plot = Get<Canvas>("Plot");
             plot.Children.Clear();
-            if (view.Map != null) { plot.Children.Add(new Image { Source = view.Map }); return; }
+            if (view.Map != null)
+            {
+                radarFrames = view.Frames ?? new[] { view };
+                Get<Button>("RadarPlay").IsEnabled = radarFrames.Length > 1;
+                Get<Slider>("RadarTime").IsEnabled = radarFrames.Length > 1;
+                updatingTimeline = true;
+                Get<Slider>("RadarTime").Maximum = radarFrames.Length - 1;
+                Get<Slider>("RadarTime").Value = radarFrames.Length - 1;
+                updatingTimeline = false;
+                plot.Children.Add(new Image { Source = view.Map });
+                Get<TextBlock>("RadarClock").Text = view.Stamp.Substring(11, 5);
+                return;
+            }
             var bars = view.Bars;
             double low = bars.Min(b => b.Low), high = bars.Max(b => b.High);
             double span = Math.Max(high - low, 1);
-            Func<double, double> y = v => 225 - 202 * (v - low) / span;
+            Func<double, double> y = v => 207 - 185 * (v - low) / span;
             var faint = Art.Ink("#4A717E");
             for (int i = 0; i <= 4; i++)
             {

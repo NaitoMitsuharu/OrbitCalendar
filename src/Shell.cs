@@ -18,10 +18,22 @@ namespace OrbitCalendar
         readonly Stopwatch focusTimer = new Stopwatch();
         readonly DispatcherTimer tick = new DispatcherTimer();
         bool exiting;
+        TimeSpan focusLength;
+        readonly Window countdown = new Window { Title = "Orbit Timer", ShowActivated = false };
+        readonly System.Windows.Controls.Button remainingLabel = new System.Windows.Controls.Button();
 
         public Shell()
         {
             panel = new CalendarPanel(Collapse, ToggleFocus);
+            StyleWindow(countdown);
+            remainingLabel.Background = Art.Ink("#102835");
+            remainingLabel.Foreground = Art.Ink("#7BE5DA");
+            remainingLabel.FontSize = 21;
+            remainingLabel.FontFamily = new System.Windows.Media.FontFamily("Bahnschrift");
+            remainingLabel.BorderBrush = Art.Ink("#36545F");
+            remainingLabel.ToolTip = "クリックしてカレンダーを開く";
+            remainingLabel.Click += delegate { Open(); };
+            countdown.Content = remainingLabel;
             tray = new Forms.NotifyIcon { Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location),
                 Text = "Orbit Calendar", ContextMenuStrip = menu, Visible = true };
             tray.MouseClick += delegate(object sender, Forms.MouseEventArgs e) { if (e.Button == Forms.MouseButtons.Left) Toggle(); };
@@ -70,14 +82,14 @@ namespace OrbitCalendar
             }));
         }
 
-        public void Open() { panel.Open(); }
+        public void Open() { countdown.Hide(); panel.Open(); }
         void Collapse() { panel.Collapse(); }
         void Toggle() { if (panel.IsVisible && !panel.IsClosing) Collapse(); else Open(); }
 
         void ToggleFocus()
         {
             if (focusTimer.IsRunning) focusTimer.Reset();
-            else focusTimer.Restart();
+            else { focusLength = TimeSpan.FromMinutes(panel.TimerMinutes); focusTimer.Restart(); }
             Update();
         }
 
@@ -87,20 +99,31 @@ namespace OrbitCalendar
             string focus = "";
             if (focusTimer.IsRunning)
             {
-                var remaining = TimeSpan.FromMinutes(25) - focusTimer.Elapsed;
+                var remaining = focusLength - focusTimer.Elapsed;
                 if (remaining <= TimeSpan.Zero)
                 {
                     focusTimer.Reset();
                     tray.ShowBalloonTip(6000, "Orbit Calendar", "集中タイムが終了しました。お疲れさまでした。", Forms.ToolTipIcon.Info);
                     System.Media.SystemSounds.Asterisk.Play();
                 }
-                else focus = TimeSpan.FromSeconds(Math.Ceiling(remaining.TotalSeconds)).ToString(@"mm\:ss");
+                else
+                {
+                    var rounded = TimeSpan.FromSeconds(Math.Ceiling(remaining.TotalSeconds));
+                    focus = ((int)rounded.TotalMinutes).ToString("00") + ":" + rounded.Seconds.ToString("00");
+                }
             }
             string newDate = now.ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
             string newTime = now.ToString("HH:mm", CultureInfo.InvariantCulture);
             string tooltip = "Orbit Calendar  " + newDate + "  " + newTime + (focus.Length == 0 ? "" : "\n集中  " + focus);
             if (tray.Text != tooltip) tray.Text = tooltip;
             panel.Tick(now, focus);
+            if (focus.Length > 0 && !panel.IsVisible)
+            {
+                remainingLabel.Content = "◷  " + focus;
+                Position(countdown, 140, 44);
+                if (!countdown.IsVisible) countdown.Show();
+            }
+            else countdown.Hide();
         }
 
         public void Dispose()
@@ -109,6 +132,7 @@ namespace OrbitCalendar
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplayChanged;
             Microsoft.Win32.SystemEvents.UserPreferenceChanged -= PreferencesChanged;
             tick.Stop();
+            countdown.Close();
             clock.Dispose();
             tray.Visible = false;
             tray.Icon.Dispose();

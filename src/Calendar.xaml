@@ -22,19 +22,13 @@
   <Grid Margin="1" ClipToBounds="True">
     <Grid Opacity="0"><Grid x:Name="Face">
       <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-      <Grid Margin="20,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <Viewbox Width="24" Height="24"><Canvas Width="24" Height="24">
-          <Ellipse Width="16" Height="16" Canvas.Left="4" Canvas.Top="4" Stroke="#7BE5DA" StrokeThickness="1.4"/>
-          <Path Data="M2,18 C-1,14 19,1 22,6 C25,10 5,23 2,18" Stroke="#7BE5DA" StrokeThickness="1.25"/>
-          <Ellipse Width="4" Height="4" Fill="#7BE5DA" Canvas.Left="17" Canvas.Top="4"/>
-        </Canvas></Viewbox>
-        <TextBlock Text="ORBIT" Margin="9,0,0,0" FontSize="18" FontWeight="Bold" FontFamily="Bahnschrift"/>
-        <TextBlock Text="CALENDAR" Margin="7,0,0,0" VerticalAlignment="Center" FontSize="10" FontFamily="Consolas" Foreground="#99BAC4"/>
+      <Grid Margin="17,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Name="CalendarTab" Content="カレンダー" Width="85"/>
+        <Button Name="MarketTab" Content="株価" Width="58"/>
+        <Button Name="WeatherTab" Content="雨雲" Width="58"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-        <Button Name="CalendarTab" Content="カレンダー" ToolTip="カレンダー" AutomationProperties.Name="カレンダー" Width="78"/>
-        <Button Name="MarketTab" Content="株価" Margin="4,0" Width="46"/>
-        <Button Name="WeatherTab" Content="雨雲" Width="46"/>
+        <Button Name="SettingsButton" Content="⚙" Width="32" ToolTip="表示設定" AutomationProperties.Name="表示設定"/>
         <Button Name="CloseButton" Content="×" FontSize="19" Width="29" Height="29" Margin="10,0,-5,0" ToolTip="時計に戻る (Esc)" AutomationProperties.Name="時計に戻る"/>
       </StackPanel></Grid>
       <Grid Grid.Row="1" Name="CalendarBody"><Grid.RowDefinitions><RowDefinition Height="101"/><RowDefinition Height="*"/><RowDefinition Height="68"/><RowDefinition Height="43"/></Grid.RowDefinitions>
@@ -56,17 +50,19 @@
       </Grid>
       <Grid Name="Dates" Grid.Row="1" Margin="16,10,16,8"/>
       <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
-        <Grid><StackPanel VerticalAlignment="Center">
-          <TextBlock Name="SelectedLabel" Foreground="#8FE4DD" FontSize="12" FontFamily="Consolas"/>
-          <TextBlock Name="SelectedDate" FontSize="16" FontWeight="SemiBold" Margin="0,2,0,0"/>
-        </StackPanel>
-        <Button Name="Copy" Content="日付をコピー" Background="#254552" Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        <Grid>
+          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center"/>
+          <TextBlock Name="HolidayName" FontSize="13" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </Grid>
       </Border>
-      <Border Grid.Row="3" BorderBrush="#25424C" BorderThickness="0,1,0,0" Margin="17,0">
-        <Grid><TextBlock Name="DayCount" Foreground="#91B4BE" VerticalAlignment="Center" FontSize="11" FontFamily="Consolas"/>
-        <Button Name="FocusButton" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#7BE5DA" Content="▶   集中 25 分" ToolTip="25分の集中タイマーを開始・解除"/></Grid>
-      </Border>
+      <Grid Grid.Row="3" Margin="17,0">
+        <Border Background="#25424C" Height="2" VerticalAlignment="Top"/>
+        <Border Name="YearGauge" Background="#7BE5DA" Height="2" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <Button Name="TimerDuration" Content="30 分" ToolTip="タイマーの時間を選択"/>
+          <Button Name="FocusButton" Content="▶" Width="32" ToolTip="タイマーを開始・停止"/>
+        </StackPanel>
+      </Grid>
       </Grid>
       <StackPanel Grid.Row="1" Name="DataBody" Margin="20,12" Visibility="Collapsed">
         <TextBlock Name="SectionLabel" Foreground="#86E8DE" FontFamily="Consolas" FontSize="13"/>
@@ -76,8 +72,13 @@
           <Button Name="Choice0" Margin="0,0,5,0"/><Button Name="Choice1" Margin="0,0,5,0"/><Button Name="Choice2"/><Button Name="Choice3" Margin="5,0,0,0"/>
           <Button Name="RefreshData" Content="更新" Margin="18,0,0,0"/>
         </StackPanel>
-        <Canvas Name="Plot" Width="414" Height="255" Margin="0,12,0,0" ClipToBounds="True"/>
+        <Canvas Name="Plot" Width="414" Height="236" Margin="0,12,0,0" ClipToBounds="True"/>
         <TextBlock Name="PlotCaption" Foreground="#CAEAEB" FontSize="13" Margin="0,6,0,6"/>
+        <StackPanel Name="RadarControls" Orientation="Horizontal" Visibility="Collapsed">
+          <Button Name="RadarPlay" Content="▶" Width="30" ToolTip="雨雲の時刻を再生"/>
+          <Slider Name="RadarTime" Width="285" Minimum="0" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Margin="8,0"/>
+          <TextBlock Name="RadarClock" Foreground="#B3DBDF" VerticalAlignment="Center"/>
+        </StackPanel>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
     </Grid>

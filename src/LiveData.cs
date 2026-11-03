@@ -51,6 +51,7 @@ namespace OrbitCalendar
             public string Heading, Stamp, Caption;
             public List<Candle> Bars;
             public BitmapSource Map;
+            public View[] Frames;
             public DateTime Fetched = DateTime.UtcNow;
         }
 
@@ -97,6 +98,7 @@ namespace OrbitCalendar
                 Caption = bars[0].Day.ToString("MM/dd") + "  —  " + last.Day.ToString("MM/dd") + "     緑：上昇   赤：下落" };
         }
 
+        static readonly Dictionary<string, byte[]> baseTiles = new Dictionary<string, byte[]>();
         class Tile { public int X, Y; public byte[] Base, Rain; }
         static byte[] Pixels(byte[] png)
         {
@@ -115,10 +117,17 @@ namespace OrbitCalendar
         static async Task<Tile> ReadTile(int zoom, int x, int y, RadarTime time, CancellationToken token)
         {
             string path = zoom + "/" + x + "/" + y + ".png";
-            var land = Get("https://cyberjapandata.gsi.go.jp/xyz/pale/" + path, token, true);
+            byte[] cached;
+            lock (baseTiles) baseTiles.TryGetValue(path, out cached);
+            var land = cached != null ? Task.FromResult(cached) : Get("https://cyberjapandata.gsi.go.jp/xyz/pale/" + path, token, true);
             var rain = Get("https://www.jma.go.jp/bosai/jmatile/data/nowc/" + time.basetime + "/none/" +
                 time.validtime + "/surf/hrpns/" + path, token, true);
             await Task.WhenAll(land, rain).ConfigureAwait(false);
+            if (land.Result != null) lock (baseTiles)
+            {
+                if (baseTiles.Count > 100) baseTiles.Clear();
+                baseTiles[path] = land.Result;
+            }
             return new Tile { X = x, Y = y, Base = Pixels(land.Result), Rain = Pixels(rain.Result) };
         }
 
@@ -164,24 +173,39 @@ namespace OrbitCalendar
         static async Task<View> WeatherAt(int region, GeoCoordinate here, CancellationToken token)
         {
             var times = await Json<RadarTime[]>("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json", token).ConfigureAwait(false);
-            var time = times.Where(v => v.elements != null && v.elements.Contains("hrpns") && v.validtime == v.basetime)
-                            .OrderByDescending(v => v.validtime, StringComparer.Ordinal).First();
+            var sequence = times.Where(v => v.elements != null && v.elements.Contains("hrpns") && v.validtime == v.basetime)
+                            .OrderByDescending(v => v.validtime, StringComparer.Ordinal).Where((v, i) => i % 2 == 0).Take(7).Reverse().ToArray();
             if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
                 here.Longitude >= 120 && here.Longitude <= 155)
             {
-                var local = await RadarMap(time, "現在地周辺", here.Latitude, here.Longitude, 9, token).ConfigureAwait(false);
+                var local = await RadarSequence(sequence, "現在地周辺", here.Latitude, here.Longitude, 9, token).ConfigureAwait(false);
                 if (local != null) return local;
             }
             int preset = Math.Max(1, region) - 1;
-            var map = await RadarMap(time, Regions[preset + 1], new[] { 35.7, 35.7, 34.8 }[preset],
+            var map = await RadarSequence(sequence, Regions[preset + 1], new[] { 35.7, 35.7, 34.8 }[preset],
                 new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token).ConfigureAwait(false);
             if (map == null) throw new InvalidDataException();
             return map;
         }
 
+        static async Task<View> RadarSequence(RadarTime[] times, string name, double latitude, double lon, int zoom, CancellationToken token)
+        {
+            var frames = new List<View>();
+            foreach (var time in times)
+            {
+                token.ThrowIfCancellationRequested();
+                var frame = await RadarMap(time, name, latitude, lon, zoom, token).ConfigureAwait(false);
+                if (frame != null) frames.Add(frame);
+            }
+            if (frames.Count == 0) return null;
+            var latest = frames[frames.Count - 1];
+            latest.Frames = frames.ToArray();
+            return latest;
+        }
+
         static async Task<View> RadarMap(RadarTime time, string name, double latitude, double lon, int z, CancellationToken token)
         {
-            const int width = 414, height = 250;
+            const int width = 414, height = 230;
             double scale = z == 4 ? .76 : .88;
             double lat = latitude * Math.PI / 180;
             int world = 256 << z;
