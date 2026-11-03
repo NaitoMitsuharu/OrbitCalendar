@@ -21,12 +21,12 @@ $mini=$null
 try{
  $panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 1800
  $focus=$root.FindName('FocusButton');$before=$focus.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($focus.RenderSize))
- $panel.UpdateTimerProgress(.25,$true)
+ $panel.Tick([DateTime]::Now,'22:30');$panel.UpdateTimerProgress(.25,$true)
  $after=$focus.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($focus.RenderSize))
  Assert ($before.X -eq $after.X -and $before.Y -eq $after.Y) 'Play/stop button shifted when progress appeared'
  $bar=$root.FindName('TimerProgressTrack');$bb=$bar.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($bar.RenderSize));Assert ($bb.Left -lt 25 -and $bb.Right -lt $before.Left) 'Timer bar is not aligned left'
  $effect=$pt.GetField('effect',$if).GetValue($panel);$grains=$effect.GetType().GetField('grains',$if).GetValue($effect);Assert (@($grains|Where-Object {$_.Moving -and $bb.Contains($_.Target)}).Count -gt 0) 'Timer bar did not assemble from particles'
- Pump 1700;Snapshot 'timer-progress.png';$panel.UpdateTimerProgress(.75,$true);Assert ($root.FindName('TimerProgress').Width -eq 78) 'Gauge progression failed';$panel.UpdateTimerProgress(0,$false)
+ Pump 1700;Snapshot 'timer-progress.png';$panel.UpdateTimerProgress(.75,$true);Assert ($root.FindName('TimerProgress').Width -eq 78) 'Gauge progression failed';$panel.UpdateTimerProgress(0,$false);$panel.Tick([DateTime]::Now,'')
  $weatherGroup=$root.FindName('TodayWeatherGroup');$wg=$weatherGroup.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($weatherGroup.RenderSize));$date=$root.FindName('SelectedDate');$db=$date.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($date.RenderSize));Assert ($wg.Left-$db.Right -ge 35 -and [Math]::Abs(($wg.Left+$wg.Right)/2-229) -lt 20) 'Calendar weather is too close to week label';Snapshot 'calendar.png'
  $mini=[Activator]::CreateInstance($a.GetType('OrbitCalendar.ParticleTimer'),[object[]]@([Action]{}));$mini.Update('05:00',.5);$small=$mini.PreferredWidth;$mini.Width=$small;$mini.Height=52;$mini.Show();Pump 1800
  Assert ($small -ge 120 -and $small -le 140) 'Compact timer still has excessive padding';SaveImage $mini.Content ([int]$small) 52 'timer.png'
