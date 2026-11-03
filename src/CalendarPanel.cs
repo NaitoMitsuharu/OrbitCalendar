@@ -211,14 +211,17 @@ namespace OrbitCalendar
             Activate();
             UpdateLayout();
             effect.Start(false);
+            UpdateTodayWeather();
         }
 
         public void Tick(DateTime now, string focus)
         {
             if (IsClosing) return;
+            if (IsVisible && mode == 0) UpdateTodayWeather();
             if (IsVisible && mode != 0 && loading == null && DateTime.UtcNow >= nextUpdate) LoadView(false);
             if (today != now.Date || holidayRevision != Holidays.Revision)
             {
+                if (today != now.Date) nextTodayWeather = DateTime.MinValue;
                 if (selected == today) selected = now.Date;
                 holidayRevision = Holidays.Revision;
                 today = now.Date;

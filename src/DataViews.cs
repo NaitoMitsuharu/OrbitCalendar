@@ -27,8 +27,9 @@ namespace OrbitCalendar
         void InitializeViews()
         {
             tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab") };
-            choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3") };
+            choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3"), Get<Button>("Choice4") };
             tabs[0].Background = activeTab;
+            InitializeMapInteraction();
             radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
             radarPlayback.Tick += delegate
             {
@@ -51,13 +52,13 @@ namespace OrbitCalendar
             for (int i = 0; i < choices.Length; i++)
             {
                 int value = i;
-                if (i < tabs.Length) tabs[i].Click += delegate { if (mode != value) SwitchView(value); };
-                choices[i].Click += delegate { if (choice[mode] != value) { choice[mode] = value; SwitchView(mode); } };
+                if (i < tabs.Length) tabs[i].Click += delegate { if (mode != value) { mapViewport = null; SwitchView(value); } };
+                choices[i].Click += delegate { if (choice[mode] != value || mode == 2) { choice[mode] = value; mapViewport = null; if (mode == 2) saved.Remove(mode * 10 + value); SwitchView(mode); } };
             }
             Get<Button>("RefreshData").Click += delegate { LoadView(true); };
             Get<Button>("DataSource").Click += delegate
             {
-                string url = mode == 1 ? "https://finance.yahoo.com/quote/" + Uri.EscapeDataString(LiveData.Symbols[choice[1]]) + "/" :
+                string url = mode == 1 && choice[1] == 4 ? "https://emaxis.am.mufg.jp/fund/253425.html" : mode == 1 ? "https://finance.yahoo.com/quote/" + Uri.EscapeDataString(LiveData.Symbols[choice[1]]) + "/" :
                     "https://www.jma.go.jp/bosai/nowc/";
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             };
@@ -70,6 +71,7 @@ namespace OrbitCalendar
         {
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
+            zoomWait.Stop();
             StopRadar();
             if (loading != null) loading.Cancel();
             mode = value;
@@ -88,7 +90,10 @@ namespace OrbitCalendar
             loading = request;
             int index = choice[mode], key = mode * 10 + index;
             StopRadar();
+            var requestedViewport = mapViewport;
+            var previousWeather = activeWeather;
             bool market = mode == 1;
+            Get<TextBlock>("MapHint").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             Get<StackPanel>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             var names = market ? LiveData.MarketNames : LiveData.Regions;
             var stamp = Get<TextBlock>("DataStamp");
@@ -103,11 +108,12 @@ namespace OrbitCalendar
                     choices[i].Background = i == index ? activeTab : Brushes.Transparent;
                 }
                 Get<TextBlock>("SectionLabel").Text = market ? "MARKET   /   3 MONTHS" : "WEATHER   /   PRECIPITATION";
-                Get<Button>("DataSource").Content = market ? "Yahoo Finance  ↗" : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
+                Get<Button>("DataSource").Content = market ? (index == 4 ? "三菱UFJアセットマネジメント  ↗" : "Yahoo Finance  ↗") : "気象庁 雨雲の動き  ↗   ／   地図：国土地理院（加工）";
                 LiveData.View view;
                 saved.TryGetValue(key, out view);
-                bool fetch = force || view == null || DateTime.UtcNow - view.Fetched >= TimeSpan.FromMinutes(5);
-                if (view != null) ShowData(view);
+                bool fetch = force || requestedViewport != null || view == null || DateTime.UtcNow - view.Fetched >= TimeSpan.FromMinutes(5);
+                if (view != null && requestedViewport == null) ShowData(view);
+                else if (requestedViewport != null && previousWeather != null) ShowData(previousWeather);
                 else
                 {
                     radarFrames = null;
@@ -126,9 +132,9 @@ namespace OrbitCalendar
                 effect.Start(true);
                 if (fetch)
                 {
-                    view = market ? await LiveData.Market(index, request.Token) : await LiveData.Weather(index, request.Token);
+                    view = market ? await LiveData.Market(index, request.Token) : await LiveData.Weather(index, request.Token, requestedViewport);
                     if (request.IsCancellationRequested) return;
-                    saved[key] = view;
+                    if (market || requestedViewport == null) saved[key] = view;
                     ShowData(view);
                     UpdateLayout();
                     effect.Start(true);
@@ -140,6 +146,12 @@ namespace OrbitCalendar
                 if (request.IsCancellationRequested) return;
                 LiveData.View previous;
                 stamp.Text = saved.TryGetValue(key, out previous) ? previous.Stamp + "  ·  更新失敗" : "取得できませんでした。「更新」で再試行";
+                if (!market && requestedViewport != null && previousWeather != null)
+                {
+                    mapViewport = previousWeather.Viewport;
+                    ShowData(previousWeather);
+                    stamp.Text = previousWeather.Stamp + " · 範囲更新失敗";
+                }
                 nextUpdate = DateTime.UtcNow.AddMinutes(1);
             }
             finally
@@ -163,9 +175,18 @@ namespace OrbitCalendar
         void DrawRadar(LiveData.View view)
         {
             var plot = Get<Canvas>("Plot");
+            activeWeather = view;
             plot.Children.Add(new Image { Source = view.Map });
+            Get<TextBlock>("MapHint").Text = view.LocationHint + " · ホイール拡縮 / ドラッグ移動";
             if (!view.LocationPoint.HasValue) return;
             var point = view.LocationPoint.Value;
+            if (view.AccuracyPixels > 4)
+            {
+                double radius = Math.Min(230, view.AccuracyPixels);
+                var uncertainty = new Ellipse { Width = radius * 2, Height = radius * 2, Stroke = Art.Ink("#F5A2A2"),
+                    StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 3, 3 }, Opacity = .65 };
+                Canvas.SetLeft(uncertainty, point.X - radius); Canvas.SetTop(uncertainty, point.Y - radius); plot.Children.Add(uncertainty);
+            }
             var halo = new Ellipse { Width = 14, Height = 14, Fill = Art.Ink("#492D3C"), Stroke = Art.Ink("#FFE6E6"), StrokeThickness = 1 };
             Canvas.SetLeft(halo, point.X - 7); Canvas.SetTop(halo, point.Y - 7); plot.Children.Add(halo);
             var dot = new Ellipse { Width = 8, Height = 8, Fill = Art.Ink("#FF4949"), ToolTip = "現在地（位置情報による推定）" };
@@ -179,7 +200,7 @@ namespace OrbitCalendar
             plot.Children.Clear();
             DrawRadar(frame);
             Get<TextBlock>("DataStamp").Text = frame.Stamp;
-            Get<TextBlock>("RadarClock").Text = frame.Stamp.Substring(11, 5);
+            Get<TextBlock>("RadarClock").Text = frame.Stamp.Substring(11, 5) + (frame.Forecast ? " 予測" : " 観測");
             effect.Refresh();
         }
 
@@ -197,10 +218,10 @@ namespace OrbitCalendar
                 Get<Slider>("RadarTime").IsEnabled = radarFrames.Length > 1;
                 updatingTimeline = true;
                 Get<Slider>("RadarTime").Maximum = radarFrames.Length - 1;
-                Get<Slider>("RadarTime").Value = radarFrames.Length - 1;
+                Get<Slider>("RadarTime").Value = Array.IndexOf(radarFrames, view);
                 updatingTimeline = false;
                 DrawRadar(view);
-                Get<TextBlock>("RadarClock").Text = view.Stamp.Substring(11, 5);
+                Get<TextBlock>("RadarClock").Text = view.Stamp.Substring(11, 5) + (view.Forecast ? " 予測" : " 観測");
                 return;
             }
             var bars = view.Bars;
@@ -215,6 +236,13 @@ namespace OrbitCalendar
                 plot.Children.Add(new Line { X1 = 0, X2 = 348, Y1 = lineY, Y2 = lineY, Stroke = faint });
                 var label = new TextBlock { Text = price.ToString("#,##0"), Foreground = Art.Ink("#A9CAD6"), FontSize = 12 };
                 Canvas.SetLeft(label, 354); Canvas.SetTop(label, lineY - 8); plot.Children.Add(label);
+            }
+            if (view.IsFund)
+            {
+                var line = new Polyline { Stroke = Art.Ink("#7BE5DA"), StrokeThickness = 1.7 };
+                for (int i = 0; i < bars.Count; i++) line.Points.Add(new Point(344.0 * i / (bars.Count - 1), y(bars[i].Close)));
+                plot.Children.Add(line);
+                return;
             }
             double step = 344.0 / bars.Count;
             var up = Art.Ink("#5CE3AC");

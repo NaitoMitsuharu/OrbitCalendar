@@ -32,8 +32,10 @@ namespace OrbitCalendar
             public double?[] close { get; set; }
         }
         public class Indicators { public Prices[] quote { get; set; } }
+        public class Meta { public int gmtoffset { get; set; } }
         public class Series
         {
+            public Meta meta { get; set; }
             public long[] timestamp { get; set; }
             public Indicators indicators { get; set; }
         }
@@ -46,6 +48,23 @@ namespace OrbitCalendar
             public string[] elements { get; set; }
         }
 
+        public class DailyCodes { public int[] weather_code { get; set; } }
+        public class DailyForecast { public DailyCodes daily { get; set; } }
+
+        public static async Task<int?> TodayWeather()
+        {
+            var here = DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null;
+            if (here == null) here = await CurrentPosition(CancellationToken.None);
+            if (here == null) return null;
+            lastPosition = here; lastPositionTime = DateTime.UtcNow;
+            string lat = Math.Round(here.Latitude, 2).ToString(CultureInfo.InvariantCulture);
+            string lon = Math.Round(here.Longitude, 2).ToString(CultureInfo.InvariantCulture);
+            var data = await Json<DailyForecast>("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+                "&daily=weather_code&forecast_days=1&timezone=Asia%2FTokyo", CancellationToken.None).ConfigureAwait(false);
+            if (data.daily == null || data.daily.weather_code == null || data.daily.weather_code.Length == 0) throw new InvalidDataException();
+            return data.daily.weather_code[0];
+        }
+
         public class Candle { public DateTime Day; public double Open, High, Low, Close; }
         public class View
         {
@@ -54,11 +73,15 @@ namespace OrbitCalendar
             public BitmapSource Map;
             public Point? LocationPoint;
             public View[] Frames;
+            public bool IsFund, Forecast;
+            public Viewport Viewport;
+            public double AccuracyPixels;
+            public string LocationHint;
             public DateTime Fetched = DateTime.UtcNow;
         }
 
-        public static readonly string[] MarketNames = { "日経平均", "トヨタ", "ソニー" };
-        public static readonly string[] Symbols = { "^N225", "7203.T", "6758.T" };
+        public static readonly string[] MarketNames = { "日経平均", "トヨタ", "ソニー", "S&P 500", "オルカン" };
+        public static readonly string[] Symbols = { "^N225", "7203.T", "6758.T", "^GSPC", "0331418A" };
         public static readonly string[] Regions = { "現在地", "日本広域", "関東", "関西" };
 
         internal static async Task<byte[]> Get(string url, CancellationToken token, bool missingAllowed = false)
@@ -79,6 +102,7 @@ namespace OrbitCalendar
 
         public static async Task<View> Market(int index, CancellationToken token)
         {
+            if (index == 4) return await AllCountry(token).ConfigureAwait(false);
             string symbol = Symbols[index];
             var data = await Json<Finance>("https://query1.finance.yahoo.com/v8/finance/chart/" +
                 Uri.EscapeDataString(symbol) + "?interval=1d&range=3mo", token).ConfigureAwait(false);
@@ -89,15 +113,49 @@ namespace OrbitCalendar
             for (int i = 0; i < count; i++)
             {
                 if (!q.open[i].HasValue || !q.close[i].HasValue || !q.low[i].HasValue || !q.high[i].HasValue) continue;
-                bars.Add(new Candle { Day = new DateTime(1970, 1, 1).AddSeconds(s.timestamp[i]).AddHours(9),
+                bars.Add(new Candle { Day = new DateTime(1970, 1, 1).AddSeconds(s.timestamp[i] + s.meta.gmtoffset),
                     Open = q.open[i].Value, Close = q.close[i].Value, High = q.high[i].Value, Low = q.low[i].Value });
             }
             if (bars.Count < 2) throw new InvalidDataException();
             var last = bars[bars.Count - 1];
             var change = last.Close - bars[bars.Count - 2].Close;
-            return new View { Bars = bars, Heading = MarketNames[index] + "   " + last.Close.ToString("#,##0.##") + " 円",
-                Stamp = last.Day.ToString("yyyy/MM/dd") + " 日足  ·  前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + " 円",
+            return new View { Bars = bars, Heading = MarketNames[index] + "   " + last.Close.ToString("#,##0.##") + (index == 3 ? " pt" : " 円"),
+                Stamp = last.Day.ToString("yyyy/MM/dd") + " 日足  ·  前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + (index == 3 ? " pt" : " 円"),
                 Caption = bars[0].Day.ToString("MM/dd") + "  —  " + last.Day.ToString("MM/dd") + "     緑：上昇   赤：下落" };
+        }
+
+        static async Task<View> AllCountry(CancellationToken token)
+        {
+            var bytes = await Get("https://www.am.mufg.jp/fund_file/setteirai/253425.csv", token).ConfigureAwait(false);
+            var bars = new List<Candle>();
+            using (var reader = new StringReader(System.Text.Encoding.GetEncoding(932).GetString(bytes)))
+            {
+                reader.ReadLine(); reader.ReadLine();
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    var row = line.Split(',');
+                    DateTime day; double value;
+                    if (row.Length < 2 || !DateTime.TryParseExact(row[0], "yyyy/MM/dd", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out day) || !double.TryParse(row[1], NumberStyles.Float, CultureInfo.InvariantCulture, out value)) continue;
+                    bars.Add(new Candle { Day = day, Open = value, Close = value, High = value, Low = value });
+                }
+            }
+            if (bars.Count < 2) throw new InvalidDataException();
+            var last = bars[bars.Count - 1];
+            double change = last.Close - bars[bars.Count - 2].Close;
+            bars = bars.Where(v => v.Day >= last.Day.AddMonths(-3)).ToList();
+            return new View { IsFund = true, Bars = bars, Heading = "オルカン   " + last.Close.ToString("#,##0") + " 円",
+                Stamp = last.Day.ToString("yyyy/MM/dd") + "  基準価額（1万口）",
+                Caption = "eMAXIS Slim 全世界株式  前日比 " + change.ToString("+#,##0;-#,##0;0") + " 円" };
+        }
+
+        public class Viewport
+        {
+            public double Latitude, Longitude;
+            public int Zoom;
+            public GeoCoordinate Marker;
+            public string Name;
         }
 
         static readonly Dictionary<string, byte[]> baseTiles = new Dictionary<string, byte[]>();
@@ -136,12 +194,12 @@ namespace OrbitCalendar
         static GeoCoordinate lastPosition;
         static DateTime lastPositionTime;
 
-        public static async Task<View> Weather(int region, CancellationToken token)
+        public static async Task<View> Weather(int region, CancellationToken token, Viewport viewport = null)
         {
-            var here = region == 0 ? await CurrentPosition(token) : null;
+            var here = region == 0 && viewport == null ? await CurrentPosition(token) : null;
             token.ThrowIfCancellationRequested();
             if (here != null) { lastPosition = here; lastPositionTime = DateTime.UtcNow; }
-            return await WeatherAt(region, here, token).ConfigureAwait(false);
+            return await WeatherAt(region, here, token, viewport).ConfigureAwait(false);
         }
 
         static async Task<GeoCoordinate> CurrentPosition(CancellationToken token)
@@ -151,10 +209,14 @@ namespace OrbitCalendar
                 using (var watcher = new GeoCoordinateWatcher(GeoPositionAccuracy.Default))
                 {
                     var result = new TaskCompletionSource<GeoCoordinate>();
+                    GeoCoordinate best = null;
                     Action<GeoPosition<GeoCoordinate>> accept = delegate(GeoPosition<GeoCoordinate> fix)
                     {
-                        if (!fix.Location.IsUnknown && fix.Timestamp >= DateTimeOffset.UtcNow.AddMinutes(-30))
-                            result.TrySetResult(fix.Location);
+                        if (!fix.Location.IsUnknown && fix.Timestamp >= DateTimeOffset.UtcNow.AddMinutes(-5))
+                        {
+                            if (best == null || double.IsNaN(best.HorizontalAccuracy) || fix.Location.HorizontalAccuracy < best.HorizontalAccuracy) best = fix.Location;
+                            if (best.HorizontalAccuracy <= 100) result.TrySetResult(best);
+                        }
                     };
                     watcher.PositionChanged += delegate(object sender, GeoPositionChangedEventArgs<GeoCoordinate> e) { accept(e.Position); };
                     watcher.StatusChanged += delegate(object sender, GeoPositionStatusChangedEventArgs e)
@@ -167,7 +229,7 @@ namespace OrbitCalendar
                     var timeout = Task.Delay(TimeSpan.FromSeconds(6), token);
                     await Task.WhenAny(result.Task, timeout);
                     token.ThrowIfCancellationRequested();
-                    return result.Task.IsCompleted ? result.Task.Result : null;
+                    return result.Task.IsCompleted ? result.Task.Result : best;
                 }
             }
             catch (UnauthorizedAccessException) { return null; }
@@ -176,11 +238,24 @@ namespace OrbitCalendar
             catch (InvalidOperationException) { return null; }
         }
 
-        static async Task<View> WeatherAt(int region, GeoCoordinate here, CancellationToken token)
+        static async Task<View> WeatherAt(int region, GeoCoordinate here, CancellationToken token, Viewport viewport = null)
         {
             var times = await Json<RadarTime[]>("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json", token).ConfigureAwait(false);
-            var sequence = times.Where(v => v.elements != null && v.elements.Contains("hrpns") && v.validtime == v.basetime)
-                            .OrderByDescending(v => v.validtime, StringComparer.Ordinal).Where((v, i) => i % 2 == 0).Take(7).Reverse().ToArray();
+            var observed = times.Where(v => v.elements != null && v.elements.Contains("hrpns") && v.validtime == v.basetime)
+                .OrderByDescending(v => v.validtime, StringComparer.Ordinal).Where((v, i) => i % 2 == 0).Take(7).ToArray();
+            var predicted = new RadarTime[0];
+            try
+            {
+                var forecasts = await Json<RadarTime[]>("https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N2.json", token).ConfigureAwait(false);
+                predicted = forecasts.Where(v => v.elements != null && v.elements.Contains("hrpns") &&
+                    String.CompareOrdinal(v.validtime, observed[0].validtime) > 0)
+                    .OrderBy(v => v.validtime, StringComparer.Ordinal).Where((v, i) => i % 2 == 1).ToArray();
+            }
+            catch (HttpRequestException) { }
+            catch (TaskCanceledException) { token.ThrowIfCancellationRequested(); }
+            var sequence = observed.Concat(predicted).OrderBy(v => v.validtime, StringComparer.Ordinal).ToArray();
+            if (viewport != null) return await RadarSequence(sequence, viewport.Name, viewport.Latitude, viewport.Longitude,
+                viewport.Zoom, token, viewport.Marker).ConfigureAwait(false);
             if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
                 here.Longitude >= 120 && here.Longitude <= 155)
             {
@@ -200,18 +275,21 @@ namespace OrbitCalendar
             foreach (var time in times)
             {
                 token.ThrowIfCancellationRequested();
-                var frame = await RadarMap(time, name, latitude, lon, zoom, token, marker).ConfigureAwait(false);
+                View frame = null;
+                try { frame = await RadarMap(time, name, latitude, lon, zoom, token, marker).ConfigureAwait(false); }
+                catch (HttpRequestException) { if (time.basetime == time.validtime) throw; }
+                if (frame != null) frame.Viewport = new Viewport { Name = name, Latitude = latitude, Longitude = lon, Zoom = zoom, Marker = marker };
                 if (frame != null) frames.Add(frame);
             }
             if (frames.Count == 0) return null;
-            var latest = frames[frames.Count - 1];
+            var latest = frames.LastOrDefault(frame => !frame.Forecast) ?? frames[0];
             latest.Frames = frames.ToArray();
             return latest;
         }
 
         static async Task<View> RadarMap(RadarTime time, string name, double latitude, double lon, int z, CancellationToken token, GeoCoordinate marker = null)
         {
-            const int width = 414, height = 230;
+            const int width = 414, height = 214;
             double scale = z == 4 ? .76 : .88;
             double lat = latitude * Math.PI / 180;
             int world = 256 << z;
@@ -242,17 +320,30 @@ namespace OrbitCalendar
                     pixels[p] = (byte)b; pixels[p + 1] = (byte)g; pixels[p + 2] = (byte)r; pixels[p + 3] = 255;
                 }
             Point? position = null;
+            double accuracyPixels = 0;
+            string locationHint = "測位なし";
             if (marker != null && !marker.IsUnknown)
             {
                 double phi = marker.Latitude * Math.PI / 180;
                 double mx = (world * (marker.Longitude + 180) / 360 - left) * scale;
                 double my = (world * (1 - Math.Log(Math.Tan(phi) + 1 / Math.Cos(phi)) / Math.PI) / 2 - top) * scale;
-                if (mx >= 0 && mx < width && my >= 0 && my < height) position = new Point(mx, my);
+                if (mx >= 0 && mx < width && my >= 0 && my < height)
+                {
+                    position = new Point(mx, my);
+                    double accuracy = marker.HorizontalAccuracy;
+                    if (!double.IsNaN(accuracy) && !double.IsInfinity(accuracy))
+                    {
+                        accuracyPixels = accuracy / (Math.Cos(phi) * 40075016.686 / world) * scale;
+                        locationHint = "現在地 推定±" + (accuracy < 1000 ? Math.Round(accuracy) + "m" : (accuracy / 1000).ToString("0.0") + "km");
+                    }
+                    else locationHint = "現在地 精度不明";
+                }
+                else locationHint = "現在地は表示範囲外";
             }
             var map = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
             map.Freeze();
             var stamp = DateTime.ParseExact(time.validtime, "yyyyMMddHHmmss", CultureInfo.InvariantCulture).AddHours(9);
-            return new View { Map = map, LocationPoint = position, Heading = name + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") + " 観測（日本時間）",
+            return new View { Map = map, LocationPoint = position, AccuracyPixels = accuracyPixels, LocationHint = locationHint, Forecast = time.basetime != time.validtime, Heading = name + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") + (time.basetime == time.validtime ? " 観測（日本時間）" : " 予測（日本時間）"),
                 Caption = "降水強度    青：弱い雨   黄～赤：強い雨   紫：猛烈な雨" };
         }
     }
