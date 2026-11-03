@@ -53,12 +53,14 @@ namespace OrbitCalendar
 
         public static async Task<int?> TodayWeather()
         {
-            var here = DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null;
+            var here = SavedPlace.Coordinate;
+            if (here == null) here = DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null;
             if (here == null) here = await CurrentPosition(CancellationToken.None);
             if (here == null) return null;
-            lastPosition = here; lastPositionTime = DateTime.UtcNow;
-            string lat = Math.Round(here.Latitude, 2).ToString(CultureInfo.InvariantCulture);
-            string lon = Math.Round(here.Longitude, 2).ToString(CultureInfo.InvariantCulture);
+            if (SavedPlace.Coordinate == null) { lastPosition = here; lastPositionTime = DateTime.UtcNow; }
+            int decimals = SavedPlace.Coordinate == null ? 2 : 6;
+            string lat = Math.Round(here.Latitude, decimals).ToString(CultureInfo.InvariantCulture);
+            string lon = Math.Round(here.Longitude, decimals).ToString(CultureInfo.InvariantCulture);
             var data = await Json<DailyForecast>("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
                 "&daily=weather_code&forecast_days=1&timezone=Asia%2FTokyo", CancellationToken.None).ConfigureAwait(false);
             if (data.daily == null || data.daily.weather_code == null || data.daily.weather_code.Length == 0) throw new InvalidDataException();
@@ -82,7 +84,11 @@ namespace OrbitCalendar
 
         public static readonly string[] MarketNames = { "日経平均", "トヨタ", "ソニー", "S&P 500", "オルカン" };
         public static readonly string[] Symbols = { "^N225", "7203.T", "6758.T", "^GSPC", "0331418A" };
-        public static readonly string[] Regions = { "現在地", "日本広域", "関東", "関西" };
+        public static string[] Regions
+        {
+            get { return new[] { SavedPlace.Coordinate == null ? "現在地" : "保存地点", "日本広域", "関東", "関西" }; }
+        }
+        public const int MapWidth = 414, MapHeight = 190;
 
         internal static async Task<byte[]> Get(string url, CancellationToken token, bool missingAllowed = false)
         {
@@ -196,9 +202,10 @@ namespace OrbitCalendar
 
         public static async Task<View> Weather(int region, CancellationToken token, Viewport viewport = null)
         {
-            var here = region == 0 && viewport == null ? await CurrentPosition(token) : null;
+            var here = SavedPlace.Coordinate;
+            if (here == null && region == 0 && viewport == null) here = await CurrentPosition(token);
             token.ThrowIfCancellationRequested();
-            if (here != null) { lastPosition = here; lastPositionTime = DateTime.UtcNow; }
+            if (here != null && SavedPlace.Coordinate == null) { lastPosition = here; lastPositionTime = DateTime.UtcNow; }
             return await WeatherAt(region, here, token, viewport).ConfigureAwait(false);
         }
 
@@ -259,12 +266,12 @@ namespace OrbitCalendar
             if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
                 here.Longitude >= 120 && here.Longitude <= 155)
             {
-                var local = await RadarSequence(sequence, "現在地周辺", here.Latitude, here.Longitude, 9, token, here).ConfigureAwait(false);
+                var local = await RadarSequence(sequence, SavedPlace.Coordinate == null ? "現在地周辺" : "保存地点周辺", here.Latitude, here.Longitude, 9, token, here).ConfigureAwait(false);
                 if (local != null) return local;
             }
             int preset = Math.Max(1, region) - 1;
             var map = await RadarSequence(sequence, Regions[preset + 1], new[] { 35.7, 35.7, 34.8 }[preset],
-                new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token, region == 0 ? here : DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null).ConfigureAwait(false);
+                new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token, here ?? (DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null)).ConfigureAwait(false);
             if (map == null) throw new InvalidDataException();
             return map;
         }
@@ -289,7 +296,7 @@ namespace OrbitCalendar
 
         static async Task<View> RadarMap(RadarTime time, string name, double latitude, double lon, int z, CancellationToken token, GeoCoordinate marker = null)
         {
-            const int width = 414, height = 214;
+            const int width = MapWidth, height = MapHeight;
             double scale = z == 4 ? .76 : .88;
             double lat = latitude * Math.PI / 180;
             int world = 256 << z;
@@ -331,14 +338,15 @@ namespace OrbitCalendar
                 {
                     position = new Point(mx, my);
                     double accuracy = marker.HorizontalAccuracy;
+                    if (SavedPlace.Coordinate != null) locationHint = "保存した基準地点";
                     if (!double.IsNaN(accuracy) && !double.IsInfinity(accuracy))
                     {
                         accuracyPixels = accuracy / (Math.Cos(phi) * 40075016.686 / world) * scale;
                         locationHint = "現在地 推定±" + (accuracy < 1000 ? Math.Round(accuracy) + "m" : (accuracy / 1000).ToString("0.0") + "km");
                     }
-                    else locationHint = "現在地 精度不明";
+                    else locationHint = SavedPlace.Coordinate == null ? "現在地 精度不明" : "保存した基準地点";
                 }
-                else locationHint = "現在地は表示範囲外";
+                else locationHint = SavedPlace.Coordinate == null ? "現在地は表示範囲外" : "保存地点は表示範囲外";
             }
             var map = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
             map.Freeze();

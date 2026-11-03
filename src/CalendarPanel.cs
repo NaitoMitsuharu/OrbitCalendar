@@ -19,6 +19,7 @@ namespace OrbitCalendar
         readonly Brush aqua = Art.Ink("#7BE5DA"), muted = Art.Ink("#96ADB8"), lines = Art.Ink("#203A46");
         DateTime selected = DateTime.Today, today = DateTime.Today;
         int wheelDelta;
+        bool timerRunning;
         int holidayRevision;
 
         T Get<T>(string name) where T : FrameworkElement { return (T)root.FindName(name); }
@@ -77,7 +78,8 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (e.Key == Key.Escape && Get<Border>("SettingsPicker").Visibility == Visibility.Visible)
+            if (e.Key == Key.Escape && selectingPlace) { CancelPlaceSelection(); effect.Refresh(); }
+            else if (e.Key == Key.Escape && Get<Border>("SettingsPicker").Visibility == Visibility.Visible)
             {
                 ClosePanel("SettingsPicker");
             }
@@ -195,6 +197,7 @@ namespace OrbitCalendar
         {
             if (!IsVisible || IsClosing) return;
             if (loading != null) loading.Cancel();
+            CancelPlaceSelection();
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
             root.IsHitTestVisible = false;
@@ -228,6 +231,7 @@ namespace OrbitCalendar
                 DrawDates();
                 effect.Refresh();
             }
+            timerRunning = focus.Length > 0;
             var button = Get<Button>("TimerDuration");
             string label = focus.Length == 0 ? TimerMinutes + " 分" : focus;
             if (!Equals(label, button.Content))

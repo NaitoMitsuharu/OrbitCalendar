@@ -32,9 +32,11 @@ namespace OrbitCalendar
             var icon = Get<TextBlock>("TodayWeather");
             try
             {
+                int revision = SavedPlace.Revision;
                 int? code = await LiveData.TodayWeather();
+                if (revision != SavedPlace.Revision) { nextTodayWeather = DateTime.MinValue; return; }
                 icon.Text = code.HasValue ? WeatherIcons.Glyph(code.Value) : "◌";
-                icon.ToolTip = code.HasValue ? DateTime.Now.ToString("M/d") + " 今日の天気予報 · 現在地周辺 · Open-Meteo" :
+                icon.ToolTip = code.HasValue ? DateTime.Now.ToString("M/d") + " 今日の天気予報 · " + (SavedPlace.Coordinate == null ? "現在地周辺" : "保存地点周辺") + " · Open-Meteo" :
                     "今日の天気 · 現在地を取得できませんでした";
                 if (code.HasValue) nextTodayWeather = DateTime.UtcNow.AddHours(1);
             }

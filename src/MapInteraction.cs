@@ -43,14 +43,15 @@ namespace OrbitCalendar
                 Point at = e.GetPosition(plot);
                 double oldScale = start.Zoom == 4 ? .76 : .88, newScale = zoom == 4 ? .76 : .88;
                 double factor = Math.Pow(2, zoom - start.Zoom);
-                mapViewport = MoveMap(start, (at.X - 207) * (1 - factor * newScale / oldScale),
-                    (at.Y - 107) * (1 - factor * newScale / oldScale), zoom);
+                mapViewport = MoveMap(start, (at.X - LiveData.MapWidth / 2.0) * (1 - factor * newScale / oldScale),
+                    (at.Y - LiveData.MapHeight / 2.0) * (1 - factor * newScale / oldScale), zoom);
                 if (loading != null) loading.Cancel();
                 zoomWait.Stop(); zoomWait.Start();
             };
             plot.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
             {
                 if (mode != 2 || activeWeather == null || loading != null || zoomWait.IsEnabled || effect.Busy) return;
+                if (selectingPlace) { SelectPlaceAt(e.GetPosition(plot)); e.Handled = true; return; }
                 StopRadar(); dragStart = e.GetPosition(plot); plot.CaptureMouse(); e.Handled = true;
             };
             plot.MouseMove += delegate(object sender, MouseEventArgs e)

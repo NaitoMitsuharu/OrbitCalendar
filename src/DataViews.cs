@@ -30,6 +30,7 @@ namespace OrbitCalendar
             choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3"), Get<Button>("Choice4") };
             tabs[0].Background = activeTab;
             InitializeMapInteraction();
+            InitializePlacePicker();
             radarPlayback.Interval = TimeSpan.FromMilliseconds(650);
             radarPlayback.Tick += delegate
             {
@@ -71,6 +72,7 @@ namespace OrbitCalendar
         {
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
+            CancelPlaceSelection();
             zoomWait.Stop();
             StopRadar();
             if (loading != null) loading.Cancel();
@@ -93,7 +95,11 @@ namespace OrbitCalendar
             var requestedViewport = mapViewport;
             var previousWeather = activeWeather;
             bool market = mode == 1;
+            Get<Button>("PickPlace").IsEnabled = false;
             Get<TextBlock>("MapHint").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<StackPanel>("MapTools").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<Button>("AutoPlace").Visibility = SavedPlace.Coordinate == null ? Visibility.Collapsed : Visibility.Visible;
+            Get<Canvas>("Plot").Height = market ? 220 : LiveData.MapHeight + 6;
             Get<StackPanel>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
             var names = market ? LiveData.MarketNames : LiveData.Regions;
             var stamp = Get<TextBlock>("DataStamp");
@@ -117,6 +123,7 @@ namespace OrbitCalendar
                 else
                 {
                     radarFrames = null;
+                    activeWeather = null;
                     Get<Button>("RadarPlay").IsEnabled = false;
                     Get<Slider>("RadarTime").IsEnabled = false;
                     Get<Canvas>("Plot").Children.Clear();
@@ -160,6 +167,7 @@ namespace OrbitCalendar
                 {
                     loading = null;
                     refresh.IsEnabled = true;
+                    Get<Button>("PickPlace").IsEnabled = mode == 2 && activeWeather != null;
                     if (mode != 0 && IsVisible) effect.Refresh();
                 }
                 request.Dispose();
@@ -178,6 +186,7 @@ namespace OrbitCalendar
             activeWeather = view;
             plot.Children.Add(new Image { Source = view.Map });
             Get<TextBlock>("MapHint").Text = view.LocationHint + " · ホイール拡縮 / ドラッグ移動";
+            DrawCandidatePlace(view);
             if (!view.LocationPoint.HasValue) return;
             var point = view.LocationPoint.Value;
             if (view.AccuracyPixels > 4)
@@ -189,7 +198,7 @@ namespace OrbitCalendar
             }
             var halo = new Ellipse { Width = 14, Height = 14, Fill = Art.Ink("#492D3C"), Stroke = Art.Ink("#FFE6E6"), StrokeThickness = 1 };
             Canvas.SetLeft(halo, point.X - 7); Canvas.SetTop(halo, point.Y - 7); plot.Children.Add(halo);
-            var dot = new Ellipse { Width = 8, Height = 8, Fill = Art.Ink("#FF4949"), ToolTip = "現在地（位置情報による推定）" };
+            var dot = new Ellipse { Width = 8, Height = 8, Fill = Art.Ink("#FF4949"), ToolTip = SavedPlace.Coordinate == null ? "現在地（位置情報による推定）" : "保存した基準地点" };
             Canvas.SetLeft(dot, point.X - 4); Canvas.SetTop(dot, point.Y - 4); plot.Children.Add(dot);
         }
 

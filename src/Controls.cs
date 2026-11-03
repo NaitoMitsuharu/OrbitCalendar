@@ -44,6 +44,7 @@ namespace OrbitCalendar
             Closed += delegate { outside.Dispose(); };
             Get<Button>("TimerDuration").Click += delegate
             {
+                CancelPlaceSelection();
                 var picker = Get<Border>("TimerPicker");
                 Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed;
                 bool opening = picker.Visibility != Visibility.Visible;
@@ -51,6 +52,7 @@ namespace OrbitCalendar
                 picker.Visibility = opening ? Visibility.Visible : Visibility.Collapsed;
                 if (picker.Visibility == Visibility.Visible)
                 {
+                    Get<TextBlock>("TimePickerHint").Text = timerRunning ? "選んだ時間は次回のタイマーに使います" : "時間を選び、▶ でスタート";
                     var grid = Get<System.Windows.Controls.Primitives.UniformGrid>("TimeChoices");
                     grid.Children.Clear();
                     foreach (int minutes in new[] { 1, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120, 180 })
@@ -90,6 +92,7 @@ namespace OrbitCalendar
             };
             Get<Button>("SettingsButton").Click += delegate
             {
+                CancelPlaceSelection();
                 Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
                 var picker = Get<Border>("SettingsPicker");
                 if (picker.Visibility == Visibility.Visible) { ClosePanel("SettingsPicker"); return; }

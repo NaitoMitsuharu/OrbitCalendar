@@ -3,17 +3,22 @@
       TextElement.FontFamily="Segoe UI, Yu Gothic UI" TextElement.Foreground="#E3F4F4"
       TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
   <Grid.Resources>
+    <Style TargetType="ToolTip">
+      <Setter Property="Background" Value="#102835"/><Setter Property="Foreground" Value="#DBEDF0"/>
+      <Setter Property="BorderBrush" Value="#528793"/><Setter Property="Padding" Value="9,6"/>
+    </Style>
     <Style TargetType="Button">
       <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#DBEDF0"/>
       <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Padding" Value="7,3"/><Setter Property="FontSize" Value="12"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-        <Border x:Name="surface" Background="{TemplateBinding Background}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+        <Border x:Name="surface" Background="{TemplateBinding Background}" CornerRadius="5" BorderThickness="1" BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="surface" Property="Opacity" Value="0.78"/><Setter TargetName="surface" Property="BorderBrush" Value="#55818A"/><Setter TargetName="surface" Property="BorderThickness" Value="1"/></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="surface" Property="BorderBrush" Value="#8FEDE5"/><Setter TargetName="surface" Property="BorderThickness" Value="1"/></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="surface" Property="Opacity" Value="0.78"/><Setter TargetName="surface" Property="BorderBrush" Value="#55818A"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="surface" Property="BorderBrush" Value="#8FEDE5"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="surface" Property="Opacity" Value="0.35"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
@@ -68,13 +73,17 @@
       </Grid>
       <StackPanel Grid.Row="1" Name="DataBody" Margin="20,12" Visibility="Collapsed">
         <TextBlock Name="SectionLabel" Foreground="#86E8DE" FontFamily="Consolas" FontSize="13"/>
-        <TextBlock Name="DataTitle" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,0"/>
-        <TextBlock Name="DataStamp" Foreground="#D0E5EB" FontSize="14" Margin="0,4,0,8"/>
+        <TextBlock Name="DataTitle" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock Name="DataStamp" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Foreground="#D0E5EB" FontSize="14" Margin="0,4,0,8"/>
         <StackPanel Orientation="Horizontal" Height="33">
           <Button Name="Choice0" Margin="0,0,5,0"/><Button Name="Choice1" Margin="0,0,5,0"/><Button Name="Choice2"/><Button Name="Choice3" Margin="5,0,0,0"/><Button Name="Choice4" Margin="5,0,0,0"/>
           <Button Name="RefreshData" Content="更新" Margin="18,0,0,0"/>
         </StackPanel>
-        <TextBlock Name="MapHint" Foreground="#A6C7CE" FontSize="11" Margin="0,5,0,0" Visibility="Collapsed"/>
+        <StackPanel Name="MapTools" Orientation="Horizontal" Margin="0,4,0,0" Visibility="Collapsed">
+          <Button Name="PickPlace" Content="地点を指定" Background="#193B48" Padding="8,3"/>
+          <Button Name="AutoPlace" Content="自動測位に戻す" Margin="5,0,0,0" Padding="8,3" Visibility="Collapsed"/>
+        </StackPanel>
+        <TextBlock Name="MapHint" FontFamily="Segoe UI" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Foreground="#B9D7DE" FontSize="12" Margin="0,5,0,0" Visibility="Collapsed"/>
         <Canvas Name="Plot" Background="Transparent" Width="414" Height="220" Margin="0,12,0,0" ClipToBounds="True"/>
         <TextBlock Name="PlotCaption" Foreground="#CAEAEB" FontSize="13" Margin="0,6,0,6"/>
         <StackPanel Name="RadarControls" Orientation="Horizontal" Visibility="Collapsed">
@@ -84,12 +93,21 @@
         </StackPanel>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
+        <Border Name="PlaceConfirm" Grid.RowSpan="2" Width="400" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="#102835" Padding="7" BorderThickness="1" BorderBrush="#528793" CornerRadius="6" Margin="0,0,0,51" Visibility="Collapsed">
+          <StackPanel>
+            <TextBlock Name="PlaceSummary" Foreground="#B8E9E4" FontSize="12" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+              <Button Name="SavePlace" Content="この地点を保存" Background="#287181"/>
+              <Button Name="CancelPlace" Content="取消" Margin="8,0,0,0"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
       <Border Name="SettingsPicker" Grid.RowSpan="2" Width="422" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,48"
               Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="13" Visibility="Collapsed">
         <StackPanel>
           <Grid Margin="3,0,3,7">
             <TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/>
-            <Button Name="CloseSettingsPicker" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
+            <Button Name="CloseSettingsPicker" AutomationProperties.Name="設定を閉じる" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
           </Grid>
           <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
           <UniformGrid Name="PatternChoices" Columns="4"/>
@@ -110,10 +128,10 @@
         <StackPanel>
           <Grid Margin="4,0,4,8">
             <TextBlock Text="タイマーの時間" FontSize="15" Foreground="#8FE4DD" VerticalAlignment="Center"/>
-            <Button Name="CloseTimePicker" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
+            <Button Name="CloseTimePicker" AutomationProperties.Name="時間選択を閉じる" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
           </Grid>
           <UniformGrid Name="TimeChoices" Columns="4"/>
-          <TextBlock Text="時間を選び、▶ でスタート" Foreground="#92B5BE" FontSize="12" Margin="4,10,0,0"/>
+          <TextBlock Name="TimePickerHint" Text="時間を選び、▶ でスタート" Foreground="#92B5BE" FontSize="12" Margin="4,10,0,0"/>
         </StackPanel>
       </Border>
     </Grid>
