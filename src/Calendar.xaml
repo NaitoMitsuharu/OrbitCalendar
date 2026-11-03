@@ -73,13 +73,13 @@
       <Grid Name="Dates" Grid.Row="1" Margin="16,10,16,8"/>
       <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid>
-          <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition/></Grid.ColumnDefinitions>
-          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center" Margin="0,8,0,0"/>
-          <StackPanel Name="TodayWeatherGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8,0,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="78"/><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+          <StackPanel Name="TodayWeatherGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
             <TextBlock Name="TodayWeather" Text="" FontSize="26" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E" VerticalAlignment="Center"/>
-            <StackPanel Name="TodayTemperatures" Orientation="Horizontal" Margin="9,0,0,0" VerticalAlignment="Center"><TextBlock Name="TodayHigh" FontSize="12" Foreground="#F4B09F"/><TextBlock Name="TodayLow" FontSize="12" Foreground="#8EC5FF" Margin="10,0,0,0"/></StackPanel>
+            <StackPanel Name="TodayTemperatures" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center"><TextBlock Name="TodayHigh" FontSize="12" Foreground="#F4B09F"/><TextBlock Name="TodayLow" FontSize="12" Foreground="#8EC5FF" Margin="8,0,0,0"/></StackPanel>
           </StackPanel>
-          <TextBlock Name="HolidayName" Grid.Column="1" MaxWidth="190" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,0,0"/>
+          <TextBlock Name="HolidayName" Grid.Column="2" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="11" Foreground="#FF9699" VerticalAlignment="Center" Margin="8,0,0,0"/>
 
         </Grid>
       </Border>

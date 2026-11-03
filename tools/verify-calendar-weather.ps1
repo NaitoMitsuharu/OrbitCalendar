@@ -51,11 +51,16 @@ try{
   $panel.UpdateLayout();$high=$root.FindName('TodayHigh');$low=$root.FindName('TodayLow');$group=$root.FindName('TodayWeatherGroup');$holiday=$root.FindName('HolidayName');$date=$root.FindName('SelectedDate')
   $hb=$high.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($high.RenderSize));$lb=$low.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($low.RenderSize));$gb=$group.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($group.RenderSize));$db=$date.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($date.RenderSize));$holidayBounds=$holiday.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($holiday.RenderSize))
   Assert ([Math]::Abs($hb.Top-$lb.Top) -le 1 -and $hb.Right -lt $lb.Left) 'High/low not side by side'
-  Assert ($gb.Left-$db.Right -ge 25 -and $gb.Right -le 430 -and $gb.Bottom -le 487) 'Weather overlaps week or summary edge'
-  Assert (-not $holidayBounds.IntersectsWith($gb)) 'Weather overlaps holiday'
+  Assert ($gb.Left-$db.Right -ge 6 -and $gb.Left-$db.Right -le 22 -and $gb.Right -le 430 -and $gb.Bottom -le 487) 'Weather gap too large or overlaps summary edge'
+  Assert (-not $holidayBounds.IntersectsWith($gb) -and $holidayBounds.Left -ge $gb.Right+6 -and $holidayBounds.Right -le 430) 'Weather overlaps holiday or extends outside summary'
+  foreach($bounds in @($db,$hb,$lb,$holidayBounds)){
+   Assert ([Math]::Abs(($bounds.Top+$bounds.Bottom)/2-($gb.Top+$gb.Bottom)/2) -le 1) 'Week/weather/temperatures/holiday are not on one line'
+  }
+  if($holiday.Text -eq '文化の日'){Assert ($holiday.ActualWidth -ge 44) 'Culture Day was unnecessarily truncated'}
  }
  CheckLayout
- $render=$pt.GetMethod('RenderTodayWeather',$if);$render.Invoke($panel,@($fixture))|Out-Null;$root.FindName('HolidayName').Text='文化の日';$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Refresh();Pump 200;CheckLayout;Snapshot 'calendar-comparison.png'
+ $pt.GetMethod('SelectDate',$if).Invoke($panel,@([DateTime]::new(2026,11,3)))|Out-Null;Pump 1900
+ $render=$pt.GetMethod('RenderTodayWeather',$if);$render.Invoke($panel,@($fixture))|Out-Null;Assert ($root.FindName('HolidayName').Text -eq '文化の日') 'Selected holiday is missing';$panel.UpdateLayout();$pt.GetField('effect',$if).GetValue($panel).Refresh();Pump 200;CheckLayout;Snapshot 'calendar-comparison.png'
  Assert ($root.FindName('TodayWeather').Text -eq '☂') 'Rain day representative icon changed'
  # Wide negative temperatures and differences must still fit with a long holiday name.
  $fixture.daily.temperature_2m_max[0]=-12.3;$fixture.PreviousHigh=1.1;$fixture.daily.temperature_2m_min[0]=-23.4;$fixture.PreviousLow=-34.5
@@ -63,6 +68,6 @@ try{
  $render.Invoke($panel,@($missing))|Out-Null;Assert ($root.FindName('TodayHigh').Text.Contains('(—)')) 'Missing yesterday not reflected in UI'
  $render.Invoke($panel,@($forecast))|Out-Null;Click 'WeatherTab';WaitLoading;Click 'DailyMode';WaitLoading
  Assert ($pt.GetField('weatherForecast',$if).GetValue($panel).daily.time.Length -eq 3) 'Three-day view included yesterday';Snapshot 'weather-daily.png'
- Write-Output 'PASS: live yesterday and 3-day data, year boundary/date selection, positive/negative/zero/missing comparisons, side-by-side temperatures, holiday/long-text layout, representative rain icon and daily-view regression'
+ Write-Output 'PASS: live yesterday and 3-day data, year boundary/date selection, positive/negative/zero/missing comparisons, one-line week/weather/temperatures/holiday with compact gap and long-text layout, representative rain icon and daily-view regression'
  Write-Output $folder
 }finally{$panel.Hide();$panel.Close()}
