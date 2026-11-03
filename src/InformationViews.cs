@@ -14,6 +14,7 @@ namespace OrbitCalendar
         int infoPage;
         InformationFeeds.Feed information;
         int informationKey = -1;
+        bool informationStale;
         static void OpenLink(string url)
         {
             if (InformationFeeds.SafeUrl(url)) Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
@@ -23,7 +24,7 @@ namespace OrbitCalendar
             if (loading != null) loading.Cancel();
             var request = new CancellationTokenSource(); loading = request; StopRadar();
             bool news = mode == 3; int requestedMode = mode, key = news ? choice[3] : 10;
-            foreach (string name in new[] { "MarketRange", "WeatherSwitch", "Plot", "TemperaturePlot", "DailyWeatherBody", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
+            foreach (string name in new[] { "MarketValue", "MarketRange", "WeatherSwitch", "Plot", "TemperaturePlot", "DailyWeatherBody", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
             SetVisible("NewsCategories", news);
             SetVisible("InformationBody", true); SetVisible("RegionChoices", !news); SetVisible("DataChoices", true); SetVisible("DataSource", false);
             string[] labels = news ? new[] { "総合", "経済", "IT" } : new[] { "近隣", "JR", "私鉄" };
@@ -47,7 +48,9 @@ namespace OrbitCalendar
                 if (request.IsCancellationRequested || mode != requestedMode) return;
                 EndDataLoading(request);
                 information = feed; informationKey = key;
-                RenderInformation(false); nextUpdate = feed.Fetched.AddMinutes(news ? 10 : 5);
+                RenderInformation(false);
+                UpdateLayout(); effect.Start(true);
+                nextUpdate = feed.Fetched.AddMinutes(news ? 10 : 5);
             }
             catch (Exception)
             {
@@ -65,6 +68,7 @@ namespace OrbitCalendar
         }
         void RenderInformation(bool stale)
         {
+            informationStale = stale;
             bool news = mode == 3;
             if (news) { RenderNewsArticle(stale); return; }
             var routes = information.Items.Where(i => choice[4] == 0 || (choice[4] == 1 ? i.Source == "JR東日本" : i.Source != "JR東日本")).ToArray();

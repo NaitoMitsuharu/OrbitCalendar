@@ -154,12 +154,7 @@ namespace OrbitCalendar
                         area.Bottom - 5 - random.NextDouble() * Math.Min(25, area.Height));
                 movingIndex++;
             }
-            int w = (int)face.RenderSize.Width, h = (int)face.RenderSize.Height;
-            if (layer == null || layer.PixelWidth != w || layer.PixelHeight != h)
-            {
-                layer = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
-                raster = new int[w * h];
-            }
+            EnsureLayer();
             assembling = SystemParameters.ClientAreaAnimation && movingCount > 0;
             seconds = 0;
             watch.Restart();
@@ -187,8 +182,17 @@ namespace OrbitCalendar
             raster[i] = (a << 24) | (r << 16) | (g << 8) | b;
         }
 
+        void EnsureLayer()
+        {
+            int w = Math.Max(1, (int)face.RenderSize.Width), h = Math.Max(1, (int)face.RenderSize.Height);
+            if (layer != null && layer.PixelWidth == w && layer.PixelHeight == h) return;
+            layer = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
+            raster = new int[w * h];
+        }
+
         void Paint()
         {
+            EnsureLayer();
             Array.Clear(raster, 0, raster.Length);
             int w = layer.PixelWidth, h = layer.PixelHeight;
             for (int index = 0; index < grains.Length; index++)
@@ -287,6 +291,17 @@ namespace OrbitCalendar
         public void RefreshArea(Rect area)
         {
             if (!CanRefreshArea(area)) return;
+            face.UpdateLayout();
+            var updated = new List<Grain>();
+            foreach (var grain in grains) if (!area.Contains(grain.Target)) updated.Add(grain);
+            updated.AddRange(Sample(area));
+            grains = updated.ToArray();
+            Paint();
+        }
+
+        public void ReplaceArea(Rect area)
+        {
+            if (layer == null || !IsVisible || Closing || grains == null) return;
             face.UpdateLayout();
             var updated = new List<Grain>();
             foreach (var grain in grains) if (!area.Contains(grain.Target)) updated.Add(grain);

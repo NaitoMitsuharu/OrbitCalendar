@@ -98,7 +98,7 @@ namespace OrbitCalendar
             double change = last.Close - bars[bars.Count - 2].Close;
             bars = bars.Where(b => b.Day >= last.Day.AddMonths(-months)).ToList();
             if (bars.Count < 2) throw new InvalidDataException();
-            return new LiveData.View { IsFund = true, Bars = bars, Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + " 円",
+            return new LiveData.View { IsFund = true, Bars = bars, MarketName = item.Label, MarketValue = last.Close.ToString("#,##0.##") + " 円", Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + " 円",
                 Stamp = last.Day.ToString("yyyy/MM/dd") + "  基準価額 " + last.Close.ToString("#,##0.##") + "円 / 1万口",
                 Caption = "前日比 " + change.ToString("+#,##0.##;-#,##0.##;0") + " 円   " + bars[0].Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") + " — " + last.Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") };
         }

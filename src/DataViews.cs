@@ -109,6 +109,8 @@ namespace OrbitCalendar
             if (mode == 2 && showDailyWeather) { await LoadDailyWeather(force); return; }
             if (loading != null) loading.Cancel();
             PrepareStandardView();
+            Get<TextBlock>("MarketValue").Text = "";
+            SetVisible("MarketValue", false);
             var request = new CancellationTokenSource();
             loading = request;
             int index = choice[mode], key = mode * 10 + index;
@@ -285,7 +287,9 @@ namespace OrbitCalendar
 
         void ShowData(LiveData.View view)
         {
-            Get<TextBlock>("DataTitle").Text = view.Heading;
+            Get<TextBlock>("DataTitle").Text = view.Map == null && !string.IsNullOrEmpty(view.MarketName) ? view.MarketName : view.Heading;
+            Get<TextBlock>("MarketValue").Text = view.MarketValue ?? "";
+            SetVisible("MarketValue", view.Map == null && !string.IsNullOrEmpty(view.MarketValue));
             Get<TextBlock>("DataStamp").Text = view.Stamp;
             Get<TextBlock>("PlotCaption").Text = view.Caption;
             var plot = Get<Canvas>("Plot");

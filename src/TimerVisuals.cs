@@ -52,7 +52,7 @@ namespace OrbitCalendar
             var face = new Grid { Margin = new Thickness(1) }; face.Children.Add(label); face.Children.Add(glass);
             var track = new Grid { Width = 3, Height = 30, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0), Background = Art.Ink("#294753") }; track.Children.Add(gauge); face.Children.Add(track);
             var source = new Grid { Opacity = 0 }; source.Children.Add(face); root.Children.Add(source);
-            effect = new AssemblyEffect(face, surface) { IsHitTestVisible = false }; root.Children.Add(effect);
+            effect = new AssemblyEffect(face, surface) { IsHitTestVisible = false, Margin = new Thickness(1) }; root.Children.Add(effect);
             Content = root; root.Cursor = Cursors.Hand; root.ToolTip = new ToolTip { Content = "クリックして前の画面を開く", Background = Art.Ink("#102835"), Foreground = Art.Ink("#DBEDF0"), BorderBrush = Art.Ink("#528793"), Padding = new Thickness(9, 6, 9, 6) }; root.MouseLeftButtonUp += delegate { open(); };
             motion.Tick += delegate { glass.Phase = animation.Elapsed.TotalSeconds; glass.InvalidateVisual(); effect.Refresh(); };
             IsVisibleChanged += delegate
@@ -94,7 +94,7 @@ namespace OrbitCalendar
             if (mode != 0 || !IsVisible || IsClosing) return;
             if (running) bounds = PanelBounds(track);
             if (appearing) effect.StartArea(bounds, true);
-            else if (!bounds.IsEmpty) effect.RefreshArea(bounds);
+            else if (!bounds.IsEmpty) { if (running) effect.RefreshArea(bounds); else effect.ReplaceArea(bounds); }
 
         }
     }

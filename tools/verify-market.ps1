@@ -67,7 +67,7 @@ try {
     Snapshot 'default-market.png'
     $root.FindName('MarketChoices').Children[1].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
     WaitUntil { $null -eq $type.GetField('loading',$instance).GetValue($panel) }
-    Assert ($root.FindName('DataTitle').Text.Contains('円/ドル') -and $root.FindName('Plot').Children.Count -gt 10) 'USDJPY chart failed'
+    Assert ($root.FindName('MarketValue').Text.Contains('円/ドル') -and $root.FindName('Plot').Children.Count -gt 10) 'USDJPY chart failed'
     Snapshot 'usdjpy.png'
     Click 'ManageMarkets'; Pump 300; Snapshot 'registered-markets.png'
     Click 'SearchMarkets'; $root.FindName('MarketQuery').Text = 'オルカン'; Pump 300

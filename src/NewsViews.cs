@@ -15,7 +15,7 @@ namespace OrbitCalendar
         {
             if (information == null || information.Items.Length == 0) return;
             CancelNewsPreview(); infoPage = (infoPage + direction + information.Items.Length) % information.Items.Length;
-            RenderNewsArticle(false); UpdateLayout(); effect.StartArea(PanelBounds(Get<StackPanel>("InformationBody")), true);
+            RenderNewsArticle(informationStale); UpdateLayout(); effect.StartArea(PanelBounds(Get<StackPanel>("InformationBody")), true);
         }
         void RenderNewsArticle(bool stale)
         {
@@ -50,13 +50,15 @@ namespace OrbitCalendar
             {
                 await InformationFeeds.PreviewNews(item, request.Token);
                 if (request.IsCancellationRequested || mode != 3 || information == null || information.Items[infoPage] != item) return;
-                RenderNewsArticle(false); UpdateLayout(); effect.Refresh(); RefreshViewAfterLayout();
+                RenderNewsArticle(informationStale); UpdateLayout();
+                if (effect.Busy) effect.Refresh(); else effect.StartArea(PanelBounds(Get<StackPanel>("InformationBody")));
+                RefreshViewAfterLayout();
             }
             catch (OperationCanceledException) { }
             catch (Exception)
             {
                 if (request.IsCancellationRequested || mode != 3) return;
-                item.DetailsLoaded = true; RenderNewsArticle(false); effect.Refresh();
+                item.DetailsLoaded = true; RenderNewsArticle(informationStale); effect.Refresh();
             }
             finally { if (newsPreview == request) newsPreview = null; request.Dispose(); }
         }

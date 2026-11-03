@@ -67,7 +67,7 @@ namespace OrbitCalendar
                         {
                             Preferences.Minutes = duration;
                             Preferences.Save();
-                            Get<Button>("TimerDuration").Content = duration + " 分";
+                            if (!timerRunning) Get<Button>("TimerDuration").Content = duration + " 分";
                             Rect closingBounds = PanelBounds(picker);
                             picker.Visibility = Visibility.Collapsed;
                             effect.StartArea(closingBounds);

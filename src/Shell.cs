@@ -21,12 +21,14 @@ namespace OrbitCalendar
         TimeSpan focusLength;
         readonly ParticleTimer countdown;
 
-        public Shell()
+        public Shell() : this(true) { }
+
+        internal Shell(bool integrateDesktop)
         {
             panel = new CalendarPanel(Collapse, ToggleFocus);
             countdown = new ParticleTimer(Open);
             tray = new Forms.NotifyIcon { Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location),
-                Text = "Orbit Calendar", ContextMenuStrip = menu, Visible = true };
+                Text = "Orbit Calendar", ContextMenuStrip = menu, Visible = integrateDesktop };
             tray.MouseClick += delegate(object sender, Forms.MouseEventArgs e) { if (e.Button == Forms.MouseButtons.Left) Toggle(); };
             menu.Items.Add("ウィンドウを開く／閉じる", null, delegate { Toggle(); });
             menu.Items.Add(new Forms.ToolStripSeparator());
@@ -34,10 +36,11 @@ namespace OrbitCalendar
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)
             { if (!exiting) { e.Cancel = true; Collapse(); } };
             tick.Interval = TimeSpan.FromSeconds(1);
-            tick.Tick += delegate { Holidays.Check(DateTime.UtcNow); Update(); };
+            tick.Tick += delegate { if (integrateDesktop) Holidays.Check(DateTime.UtcNow); Update(); };
             tick.Start();
             Update();
-            clock = new ClockHost(Toggle, menu);
+            if (integrateDesktop) clock = new ClockHost(Toggle, menu);
+            panel.IsVisibleChanged += delegate { if (!exiting && !panel.IsVisible) Update(); };
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += DisplayChanged;
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += PreferencesChanged;
         }
@@ -73,7 +76,7 @@ namespace OrbitCalendar
             }));
         }
 
-        public void Open() { countdown.Hide(); panel.Open(); }
+        public void Open() { countdown.Hide(); panel.Open(); Update(); }
         void Collapse() { panel.Collapse(); }
         void Toggle() { if (panel.IsVisible && !panel.IsClosing) Collapse(); else Open(); }
 
@@ -126,7 +129,7 @@ namespace OrbitCalendar
             Microsoft.Win32.SystemEvents.UserPreferenceChanged -= PreferencesChanged;
             tick.Stop();
             countdown.Close();
-            clock.Dispose();
+            if (clock != null) clock.Dispose();
             tray.Visible = false;
             tray.Icon.Dispose();
             tray.Dispose();

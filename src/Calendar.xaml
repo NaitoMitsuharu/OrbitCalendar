@@ -4,6 +4,8 @@
       TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
   <Grid.Resources>
     <Style TargetType="ToolTip">
+      <Setter Property="MaxWidth" Value="380"/>
+      <Setter Property="ContentTemplate"><Setter.Value><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap"/></DataTemplate></Setter.Value></Setter>
       <Setter Property="Background" Value="#102835"/><Setter Property="Foreground" Value="#DBEDF0"/>
       <Setter Property="BorderBrush" Value="#528793"/><Setter Property="Padding" Value="9,6"/>
     </Style>
@@ -98,6 +100,7 @@
           <StackPanel Name="WeatherSwitch" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed"><Button Name="RainMode" Content="雨雲" Background="#296675"/><Button Name="DailyMode" Content="3日間の天気" Margin="5,0,0,0"/></StackPanel>
         </Grid>
         <TextBlock Name="DataTitle" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock Name="MarketValue" FontFamily="Bahnschrift" FontSize="24" Foreground="#86E8DE" Margin="0,1,0,3" Visibility="Collapsed"/>
         <TextBlock Name="DataStamp" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Foreground="#D0E5EB" FontSize="14" Margin="0,4,0,8"/>
         <Grid Name="DataChoices" Height="33"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <ScrollViewer Name="MarketScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Visibility="Collapsed"><StackPanel Name="MarketChoices" Orientation="Horizontal"/></ScrollViewer>

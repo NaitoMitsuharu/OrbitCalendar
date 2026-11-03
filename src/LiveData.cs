@@ -73,7 +73,7 @@ namespace OrbitCalendar
         public class Candle { public DateTime Day; public double Open, High, Low, Close; }
         public class View
         {
-            public string Heading, Stamp, Caption;
+            public string Heading, Stamp, Caption, MarketName, MarketValue;
             public List<Candle> Bars;
             public BitmapSource Map;
             public Point? LocationPoint;
@@ -135,7 +135,7 @@ namespace OrbitCalendar
             if (bars.Count < 2) throw new InvalidDataException();
             var last = bars[bars.Count - 1];
             var change = last.Close - bars[bars.Count - 2].Close;
-            return new View { Bars = bars, Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + (" " + item.Unit),
+            return new View { Bars = bars, MarketName = item.Label, MarketValue = last.Close.ToString("#,##0.##") + " " + item.Unit, Heading = item.Label + "   " + last.Close.ToString("#,##0.##") + (" " + item.Unit),
                 Stamp = last.Day.ToString("yyyy/MM/dd") + (months > 12 ? " 週足  ·  前週比 " : " 日足  ·  前日比 ") + change.ToString("+#,##0.##;-#,##0.##;0") + (" " + item.Unit),
                 Caption = bars[0].Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") + "  —  " + last.Day.ToString(months > 6 ? "yyyy/MM/dd" : "MM/dd") + "     緑：上昇   赤：下落" };
         }

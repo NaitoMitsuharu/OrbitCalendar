@@ -235,7 +235,7 @@ namespace OrbitCalendar
             Shell.Position(this, 458, PreferredHeight);
             Show();
             Activate();
-            if (mode == 3 && information != null) RenderInformation(false);
+            if (mode == 3 && information != null) RenderInformation(informationStale);
             UpdateLayout();
             effect.Start(false);
             if (mode == 0) UpdateTodayWeather();
@@ -257,6 +257,8 @@ namespace OrbitCalendar
                 effect.Refresh();
             }
             timerRunning = focus.Length > 0;
+            if (Get<Border>("TimerPicker").Visibility == Visibility.Visible)
+                Get<TextBlock>("TimePickerHint").Text = timerRunning ? "選んだ時間は次回のタイマーに使います" : "時間を選び、▶ でスタート";
             var button = Get<Button>("TimerDuration");
             string label = focus.Length == 0 ? TimerMinutes + " 分" : focus;
             if (!Equals(label, button.Content))

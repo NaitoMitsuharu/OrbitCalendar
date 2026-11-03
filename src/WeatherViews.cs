@@ -43,6 +43,7 @@ namespace OrbitCalendar
             if (loading != null) loading.Cancel();
             var request = new CancellationTokenSource(); loading = request;
             StopRadar();
+            SetVisible("MarketValue", false);
             SetVisible("NewsCategories", false);
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", true); SetVisible("WeatherSwitch", true);
             foreach (string name in new[] { "Plot", "TemperaturePlot", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
@@ -62,7 +63,9 @@ namespace OrbitCalendar
                 var result = await LiveData.ForecastWeather(request.Token, force);
                 if (request.IsCancellationRequested) return;
                 EndDataLoading(request);
-                weatherForecast = result; RenderDailyWeather(); nextUpdate = result.Fetched.AddMinutes(15);
+                weatherForecast = result; RenderDailyWeather();
+                UpdateLayout(); effect.Start(true);
+                nextUpdate = result.Fetched.AddMinutes(15);
                 var midnight = DateTime.UtcNow.AddHours(9).Date.AddDays(1).AddHours(-9);
                 if (nextUpdate > midnight) nextUpdate = midnight;
             }
