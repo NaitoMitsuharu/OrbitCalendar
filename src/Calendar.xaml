@@ -73,13 +73,13 @@
       <Grid Name="Dates" Grid.Row="1" Margin="16,10,16,8"/>
       <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid>
-          <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition/><ColumnDefinition Width="118"/></Grid.ColumnDefinitions>
-          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center"/>
-          <StackPanel Name="TodayWeatherGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition/></Grid.ColumnDefinitions>
+          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center" Margin="0,8,0,0"/>
+          <StackPanel Name="TodayWeatherGroup" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,8,0,0">
             <TextBlock Name="TodayWeather" Text="" FontSize="26" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E" VerticalAlignment="Center"/>
-            <StackPanel Name="TodayTemperatures" Margin="9,0,0,0" VerticalAlignment="Center"><TextBlock Name="TodayHigh" FontSize="13" Foreground="#F4B09F"/><TextBlock Name="TodayLow" FontSize="13" Foreground="#8EC5FF"/></StackPanel>
+            <StackPanel Name="TodayTemperatures" Orientation="Horizontal" Margin="9,0,0,0" VerticalAlignment="Center"><TextBlock Name="TodayHigh" FontSize="12" Foreground="#F4B09F"/><TextBlock Name="TodayLow" FontSize="12" Foreground="#8EC5FF" Margin="10,0,0,0"/></StackPanel>
           </StackPanel>
-          <TextBlock Name="HolidayName" Grid.Column="2" MaxWidth="118" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+          <TextBlock Name="HolidayName" Grid.Column="1" MaxWidth="190" TextTrimming="CharacterEllipsis" FontSize="11" Foreground="#FF9699" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,0,0"/>
 
         </Grid>
       </Border>
