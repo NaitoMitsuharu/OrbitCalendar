@@ -19,8 +19,23 @@ function Snapshot($name){Pump 250;$panel.UpdateLayout();SaveImage $root 458 ([in
 function Reopen($expected){$panel.Collapse();Pump 900;Assert (-not $panel.IsVisible) 'Collapse failed';$panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 1800;Assert ($pt.GetField('mode',$if).GetValue($panel) -eq $expected) 'Previous tab not restored';Assert ($root.Height -eq $panel.PreferredHeight) 'Reopened size incorrect'}
 
 
+function ParticleFrame($element){
+ $panel.UpdateLayout();$bounds=$element.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($element.RenderSize))
+ $bitmap=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,[int]$root.Height,96,96,[Windows.Media.PixelFormats]::Pbgra32);$bitmap.Render($root)
+ return [Windows.Media.Imaging.CroppedBitmap]::new($bitmap,[Windows.Int32Rect]::new([int][Math]::Round($bounds.X),[int][Math]::Round($bounds.Y),204,116))
+}
+function Foreground($bytes){
+ $points=[Collections.Generic.HashSet[int]]::new()
+ for($p=0;$p -lt $bytes.Length;$p+=4){if($bytes[$p+1] -gt 85 -and $bytes[$p+1] -gt $bytes[$p+2]*1.2){$points.Add($p/4)|Out-Null}}
+ return ,$points
+}
+function MatchingShape($a,$b){
+ $left=Foreground $a;$right=Foreground $b;$hits=0
+ foreach($point in $left){$found=$false;foreach($dy in -1..1){foreach($dx in -1..1){if($right.Contains($point+$dy*204+$dx)){$found=$true}}};if($found){$hits++}}
+ return $left.Count -gt 50 -and $right.Count -gt 50 -and $hits/$left.Count -gt .8 -and [Math]::Abs($left.Count-$right.Count)/[double][Math]::Max($left.Count,$right.Count) -lt .3
+}
 $settingsPath=Join-Path $folder 'display.txt'
-$load=$prefs.GetMethod('Load',$sf);$save=$prefs.GetMethod('Save',$sf);$setting=$prefs.GetField('LoadingMotion',$sf)
+$load=$prefs.GetMethod('Load',$sf);$save=$prefs.GetMethod('Save',$sf);$setting=$prefs.GetField('LoadingStyle',$sf)
 # Old four-line settings keep their values; the new option uses the default.
 [IO.File]::WriteAllLines($settingsPath,@('2','5','45','0'));$load.Invoke($null,@())|Out-Null
 Assert ($setting.GetValue($null) -eq 0 -and $prefs.GetField('Pattern',$sf).GetValue($null) -eq 2 -and $prefs.GetField('Minutes',$sf).GetValue($null) -eq 45) 'Legacy settings not preserved'
@@ -33,36 +48,65 @@ try{
  $preview=$root.FindName('PreviewArea');$replay=$root.FindName('ReplayPreview');$preBounds=$preview.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($preview.RenderSize));$replayBounds=$replay.TransformToAncestor($root).TransformBounds([Windows.Rect]::new($replay.RenderSize));Assert ($preBounds.Bottom -le $replayBounds.Top) 'Transition preview overlaps footer controls'
  Snapshot 'settings.png';Click 'SettingsLoading';Pump 1900
  Assert ($loadingSettings.Visibility -eq 'Visible' -and $transition.Visibility -eq 'Collapsed') 'Loading settings section did not open'
- $choices=$root.FindName('LoadingChoices');Assert ($choices.Children.Count -eq 4) 'Loading animation options missing'
+ $choices=$root.FindName('LoadingChoices');Assert ($choices.Children.Count -eq 6) 'Loading animation options missing'
  $particles=$pt.GetField('settingsLoadingParticles',$if).GetValue($panel);$effect=$pt.GetField('effect',$if).GetValue($panel)
  $region=$particles.TransformToAncestor($root.FindName('Face')).TransformBounds([Windows.Rect]::new($particles.RenderSize));$timer=$pt.GetField('loadingAnimation',$if).GetValue($panel)
  $frames=@()
- foreach($choice in 0..3){
+ foreach($choice in 0..5){
   $choices.Children[$choice].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Pump 1900
   Assert ($setting.GetValue($null) -eq $choice) 'Choice did not apply'
   $saved=[IO.File]::ReadAllLines($settingsPath);Assert ($saved.Length -eq 5 -and $saved[4] -eq $choice.ToString()) 'Loading choice not saved'
-  $phase=$particles.Phase;Pump 150;Assert ($particles.Phase -gt $phase) 'Preview does not animate in calendar tab'
+  $phase=$particles.Phase;Pump 250;Assert ($particles.Phase -gt $phase) ('Preview not advancing: style='+$choice+' phase='+$phase+' -> '+$particles.Phase+' timer='+$timer.IsEnabled+' visible='+$panel.IsVisible+' settings='+$picker.Visibility)
   $timer.Stop();$particles.Phase=.9;$particles.InvalidateVisual();$effect.RefreshArea($region);Pump 40
   SaveImage $root 458 ([int]$root.Height) ('loading-style-{0}.png' -f $choice)
-  $image=[Windows.Media.Imaging.RenderTargetBitmap]::new(204,116,96,96,[Windows.Media.PixelFormats]::Pbgra32);$image.Render($particles);$bytes=New-Object byte[] (204*116*4);$image.CopyPixels($bytes,204*4,0);$frames+=([Convert]::ToBase64String($bytes));$timer.Start()
+  $image=ParticleFrame $particles;$bytes=New-Object byte[] (204*116*4);$image.CopyPixels($bytes,204*4,0);$frames+=([Convert]::ToBase64String($bytes));$timer.Start()
  }
- Assert (@($frames|Select-Object -Unique).Count -eq 4) 'Loading motions render identically'
- $setting.SetValue($null,0);$load.Invoke($null,@())|Out-Null;Assert ($setting.GetValue($null) -eq 3) 'Saved selection does not reload'
+ Assert (@($frames|Select-Object -Unique).Count -eq 6) 'Loading motions render identically'
+ $setting.SetValue($null,0);$load.Invoke($null,@())|Out-Null;Assert ($setting.GetValue($null) -eq 5) 'Saved selection does not reload'
  Click 'ReplayPreview';Assert ($particles.Phase -lt .2) 'Replay did not restart preview'
  Click 'SettingsTransition';Pump 1900;Assert ($transition.Visibility -eq 'Visible') 'Cannot return to transition settings'
  # Transition and loading settings must be independent.
- $root.FindName('MotionChoices').Children[2].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Assert ($prefs.GetField('Motion',$sf).GetValue($null) -eq 2 -and $setting.GetValue($null) -eq 3) 'Transition choice overwrote loading motion'
+ $root.FindName('MotionChoices').Children[2].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Assert ($prefs.GetField('Motion',$sf).GetValue($null) -eq 2 -and $setting.GetValue($null) -eq 5) 'Transition choice overwrote loading motion'
  Click 'SettingsLoading';Pump 1900;Snapshot 'loading-settings.png'
- Click 'CloseSettingsPicker';Pump 1900;Click 'SettingsButton';Pump 1900;Assert ($loadingSettings.Visibility -eq 'Visible' -and $setting.GetValue($null) -eq 3) 'Reopening settings lost selection'
+ Click 'CloseSettingsPicker';Pump 1900;Click 'SettingsButton';Pump 1900;Assert ($loadingSettings.Visibility -eq 'Visible' -and $setting.GetValue($null) -eq 5) 'Reopening settings lost selection'
  Click 'CloseSettingsPicker';Pump 1900
  # Confirm the same renderer and saved style are used by the data loader.
  Click 'MarketTab';WaitLoading;$owner=[Threading.CancellationTokenSource]::new();$pt.GetMethod('BeginDataLoading',$if).Invoke($panel,@($owner))|Out-Null;$effect.Start($true);Pump 1900
  $main=$pt.GetField('mainLoadingParticles',$if).GetValue($panel);Assert ($main.IsVisible -and $main.GetType() -eq $particles.GetType()) 'Live loader is not using preview renderer'
  $phase=$main.Phase;Pump 150;Assert ($main.Phase -gt $phase) 'Live loader stopped after changing style'
+ $timer.Stop();$main.Phase=.9;$main.InvalidateVisual();$mainRegion=$main.TransformToAncestor($root.FindName('Face')).TransformBounds([Windows.Rect]::new($main.RenderSize));$effect.RefreshArea($mainRegion);Pump 100
+ $liveImage=ParticleFrame $main;$liveBytes=New-Object byte[] (204*116*4);$liveImage.CopyPixels($liveBytes,204*4,0)
+
+ Assert (MatchingShape ([Convert]::FromBase64String($frames[5])) $liveBytes) 'Live loader shape differs from selected preview'
+ $timer.Start()
+
  $pt.GetMethod('EndDataLoading',$if).Invoke($panel,@($owner))|Out-Null;$owner.Dispose();Click 'CalendarTab';Pump 1900
  Assert ($root.FindName('LoadingArea').Visibility -eq 'Collapsed') 'Loading style left a mask after switching tabs'
  # Save/reload every supported value, then exercise the old four-line format again.
- foreach($choice in 0..3){$setting.SetValue($null,$choice);$save.Invoke($null,@())|Out-Null;$setting.SetValue($null,99);$load.Invoke($null,@())|Out-Null;Assert ($setting.GetValue($null) -eq $choice) 'Persistence round-trip failed'}
- Write-Output 'PASS: four distinct loading motions, live preview/replay, selection persistence/reload and legacy fallback, independent transition settings, unclipped sections, same live renderer and tab cleanup'
+ foreach($choice in 0..5){$setting.SetValue($null,$choice);$save.Invoke($null,@())|Out-Null;$setting.SetValue($null,99);$load.Invoke($null,@())|Out-Null;Assert ($setting.GetValue($null) -eq $choice) 'Persistence round-trip failed'}
+
+ # Capture the actual application renderers together for visual comparison.
+ Click 'SettingsButton';Pump 1900
+ $gallery=[Windows.Window]::new();$gallery.Width=618;$gallery.Height=310;$gallery.WindowStyle='None';$gallery.ResizeMode='NoResize';$gallery.ShowInTaskbar=$false;$gallery.Background=[Windows.Media.BrushConverter]::new().ConvertFromString('#0B1923')
+ $grid=[Windows.Controls.Grid]::new();$grid.Width=618;$grid.Height=310
+ foreach($col in 0..2){$grid.ColumnDefinitions.Add([Windows.Controls.ColumnDefinition]::new())};foreach($row in 0..1){$grid.RowDefinitions.Add([Windows.Controls.RowDefinition]::new())}
+ $names=@('6本バー','円形スピナー','軌道リング','ゲーム風','スキャン','ドットウェーブ');$renderers=@()
+ # Each instance is rendered separately with the selected design before assembling the gallery.
+ $images=@();foreach($index in 0..5){
+  $cell=[Windows.Controls.StackPanel]::new();$cell.Margin=[Windows.Thickness]::new(0,5,0,5)
+  $caption=[Windows.Controls.TextBlock]::new();$caption.Text=$names[$index];$caption.FontSize=13;$caption.HorizontalAlignment='Center';$caption.Foreground=[Windows.Media.BrushConverter]::new().ConvertFromString('#C9EDEA');$cell.Children.Add($caption)|Out-Null
+  $image=[Windows.Controls.Image]::new();$image.Width=204;$image.Height=116;$cell.Children.Add($image)|Out-Null;$images+=,$image
+  [Windows.Controls.Grid]::SetColumn($cell,($index%3));[Windows.Controls.Grid]::SetRow($cell,[Math]::Floor($index/3));$grid.Children.Add($cell)|Out-Null
+ }
+ $gallery.Content=$grid;$gallery.Show();$gallery.UpdateLayout();$timer.Stop()
+ for($frame=0;$frame -lt 48;$frame++){
+  foreach($index in 0..5){
+   $setting.SetValue($null,$index);$particles.Phase=$frame*.08;$particles.InvalidateVisual();$effect.RefreshArea($region);Pump 10
+   $image=ParticleFrame $particles;$images[$index].Source=$image
+  }
+  Pump 5;SaveImage $grid 618 310 ('gallery-{0:D3}.png' -f $frame)
+ }
+ $setting.SetValue($null,0);$gallery.Close();$timer.Start()
+ Write-Output 'PASS: six distinct loading designs, live preview/replay, selection persistence/reload and legacy fallback, independent transition settings, unclipped sections, same live renderer and tab cleanup'
  Write-Output $folder
-}finally{$panel.Hide();$panel.Close()}
+}finally{if($gallery){$gallery.Close()};$panel.Hide();$panel.Close()}

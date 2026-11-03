@@ -10,86 +10,119 @@ namespace OrbitCalendar
 {
     internal sealed class ParticleLoading : FrameworkElement
     {
-        struct Seed { public Point Target, Origin; public double Delay, Size; public int Ink; }
-        Seed[] seeds;
-        static readonly Brush[] inks = { Art.Ink("#7BE5DA"), Art.Ink("#81BFCE"), Art.Ink("#C9EDEA"), Art.Ink("#E6CD87") };
+        static readonly Brush[] shades = MakeShades();
+        static readonly Brush accent = Art.Ink("#F4DD8E");
         public double Phase;
-        public ParticleLoading(int mode = 2)
+        public ParticleLoading()
         {
             Width = 204; Height = 116; HorizontalAlignment = HorizontalAlignment.Center; VerticalAlignment = VerticalAlignment.Center;
-            IsHitTestVisible = false; AutomationProperties.SetName(this, "粒子で読み込み中"); SetMode(mode);
+            IsHitTestVisible = false; AutomationProperties.SetName(this, "読み込み中");
         }
-        public void SetMode(int mode)
+        public void Restart() { Phase = 0; InvalidateVisual(); }
+        static Brush[] MakeShades()
         {
-            var targets = new System.Collections.Generic.List<Point>();
-            Action<double, double, double, double> line = (x, y, a, b) =>
+            var brushes = new Brush[24];
+            for (int i = 0; i < brushes.Length; i++)
             {
-                int n = Math.Max(1, (int)Math.Ceiling(new Vector(a - x, b - y).Length / 1.8));
-                for (int i = 0; i <= n; i++) targets.Add(new Point(x + (a - x) * i / n, y + (b - y) * i / n));
-            };
-            Action<double, double, double, double, double, double> arc = (x, y, rx, ry, from, to) =>
-            {
-                int n = Math.Max(1, (int)Math.Ceiling(Math.Abs(to - from) * Math.Max(rx, ry) / 1.8));
-                for (int i = 0; i <= n; i++) { double t = from + (to - from) * i / n; targets.Add(new Point(x + rx * Math.Cos(t), y + ry * Math.Sin(t))); }
-            };
-            if (mode == 1)
-            {
-                line(46, 82, 157, 82); line(46, 30, 46, 82);
-                double[] top = { 66, 49, 57, 39, 26 };
-                for (int i = 0; i < top.Length; i++) { double x = 61 + i * 19; line(x, top[i], x, 76); line(x + 5, top[i] + 4, x + 5, 76); line(x, top[i], x + 5, top[i] + 4); }
-                line(58, 58, 81, 39); line(81, 39, 99, 46); line(99, 46, 122, 28); line(122, 28, 149, 20);
+                double light = .28 + i * .72 / (brushes.Length - 1);
+                var brush = new SolidColorBrush(Color.FromRgb((byte)(123 * light), (byte)(229 * light), (byte)(218 * light)));
+                brush.Freeze(); brushes[i] = brush;
             }
-            else if (mode == 3)
-            {
-                line(57, 27, 147, 27); line(147, 27, 147, 88); line(147, 88, 57, 88); line(57, 88, 57, 27);
-                line(67, 38, 137, 38); line(67, 43, 137, 43);
-                line(67, 53, 91, 53); line(91, 53, 91, 72); line(91, 72, 67, 72); line(67, 72, 67, 53);
-                for (int y = 54; y <= 77; y += 8) { line(102, y, 137, y); }
-                line(67, 79, 91, 79);
-            }
-            else if (mode == 4)
-            {
-                line(78, 25, 126, 25); line(126, 25, 134, 35); line(134, 35, 134, 76); line(134, 76, 70, 76); line(70, 76, 70, 35); line(70, 35, 78, 25);
-                line(79, 37, 125, 37); line(125, 37, 125, 55); line(125, 55, 79, 55); line(79, 55, 79, 37); line(102, 37, 102, 55);
-                arc(81, 65, 3, 3, 0, Math.PI * 2); arc(123, 65, 3, 3, 0, Math.PI * 2);
-                line(83, 79, 70, 96); line(121, 79, 134, 96); line(78, 87, 126, 87); line(74, 93, 130, 93);
-            }
-            else
-            {
-                arc(72, 55, 17, 17, Math.PI * .5, Math.PI * 1.55);
-                arc(99, 43, 26, 24, Math.PI, Math.PI * 1.96);
-                arc(130, 57, 20, 17, -Math.PI * .6, Math.PI * .5); line(72, 74, 130, 74);
-                for (int i = 0; i < 4; i++) line(77 + i * 15, 83, 73 + i * 15, 94);
-            }
-            var random = new Random(741 + mode); seeds = new Seed[targets.Count];
-            for (int i = 0; i < seeds.Length; i++) seeds[i] = new Seed { Target = targets[i], Origin = new Point(14 + random.NextDouble() * 176, 10 + random.NextDouble() * 96),
-                Delay = random.NextDouble() * .12, Size = .6 + random.NextDouble() * .42, Ink = i % 23 == 0 ? 3 : i % 3 };
-            Phase = 0; InvalidateVisual();
+            return brushes;
         }
-        static double Ease(double value) { value = Math.Max(0, Math.Min(1, value)); return value * value * (3 - 2 * value); }
+        static double Wrap(double value) { return value - Math.Floor(value); }
+        static double Pulse(double value) { return .5 + .5 * Math.Sin(value); }
+        static void Dot(DrawingContext dc, double x, double y, double light, double radius = .8, bool gold = false)
+        {
+            var ink = gold ? accent : shades[(int)(Math.Max(0, Math.Min(1, light)) * (shades.Length - 1))];
+            if (Preferences.Pattern == 3) radius *= 1 + .25 * light;
+            if (Preferences.Pattern == 1) dc.DrawRectangle(ink, null, new Rect(x - radius, y - radius, radius * 1.8, radius * 1.8));
+            else if (Preferences.Pattern == 2) dc.DrawRectangle(ink, null, new Rect(x - radius, y - .35, radius * 2.5, .7));
+            else dc.DrawEllipse(ink, null, new Point(x, y), radius, radius);
+        }
+        static void Segment(DrawingContext dc, double x, double y, double a, double b, double light)
+        {
+            int n = Math.Max(1, (int)Math.Ceiling(new Vector(a - x, b - y).Length / 2.2));
+            for (int i = 0; i <= n; i++) Dot(dc, x + (a - x) * i / n, y + (b - y) * i / n, light);
+        }
+        static void Block(DrawingContext dc, double x, double y, double width, double height, double light)
+        {
+            for (double py = y; py < y + height; py += 2.2)
+                for (double px = x; px < x + width; px += 2.2) Dot(dc, px, py, light);
+        }
+        static void Corners(DrawingContext dc)
+        {
+            for (int side = -1; side <= 1; side += 2)
+                for (int vertical = -1; vertical <= 1; vertical += 2)
+                {
+                    double x = 102 + side * 62, y = 55 + vertical * 30;
+                    Segment(dc, x, y, x - side * 10, y, .42); Segment(dc, x, y, x, y - vertical * 8, .42);
+                }
+        }
         protected override void OnRender(DrawingContext dc)
         {
-            for (int i = 0; i < seeds.Length; i++)
+            double phase = SystemParameters.ClientAreaAnimation ? Phase : .65;
+            switch (Preferences.LoadingStyle)
             {
-                var seed = seeds[i]; double t = (Phase / 3.8 + seed.Delay) % 1;
-                if (Preferences.LoadingMotion == 2) t = (Phase / 3.8 + seed.Target.X / Width * .3) % 1;
-                double gather = t < .48 ? Ease(t / .48) : t < .68 ? 1 : 1 - Ease((t - .68) / .32);
-                double x = seed.Origin.X + Math.Sin(Phase * 1.1 + i * .73) * 8;
-                double y = seed.Origin.Y + Math.Cos(Phase * .9 + i * 1.13) * 6;
-                if (Preferences.LoadingMotion == 1)
-                {
-                    double angle = Math.Atan2(y - 58, x - 102) + (1 - gather) * Math.PI * 2;
-                    double radius = new Vector(x - 102, y - 58).Length;
-                    x = 102 + Math.Cos(angle) * radius; y = 58 + Math.Sin(angle) * radius * .6;
-                }
-                else if (Preferences.LoadingMotion == 2) y += Math.Sin(Phase * 4 + seed.Target.X * .06) * 14;
-                else if (Preferences.LoadingMotion == 3) gather = .74 + .19 * Math.Sin(Phase * 1.3 + seed.Delay * 9);
-                if (!SystemParameters.ClientAreaAnimation) gather = 1;
-                var point = new Point(x + (seed.Target.X - x) * gather, y + (seed.Target.Y - y) * gather);
-                double r = Preferences.Pattern == 3 && i % 7 == 0 ? seed.Size * 1.3 : seed.Size;
-                if (Preferences.Pattern == 1) dc.DrawRectangle(inks[seed.Ink], null, new Rect(point.X - r, point.Y - r, r * 1.7, r * 1.7));
-                else if (Preferences.Pattern == 2) dc.DrawRectangle(inks[seed.Ink], null, new Rect(point.X - r, point.Y, r * 2.5, .7));
-                else dc.DrawEllipse(inks[seed.Ink], null, point, r, r);
+                case 1: // A moving bright head and particle tail identify an indeterminate spinner.
+                    for (int i = 0; i < 90; i++)
+                    {
+                        double angle = i * Math.PI * 2 / 90 - Math.PI / 2;
+                        double light = Math.Pow(1 - Wrap(i / 90.0 - phase / 1.5), 2);
+                        for (int band = 0; band < 3; band++) Dot(dc, 102 + Math.Cos(angle) * (27 + band * 2.2), 55 + Math.Sin(angle) * (27 + band * 2.2), light);
+                    }
+                    break;
+                case 2:
+                    for (int orbit = 0; orbit < 2; orbit++)
+                    {
+                        double tilt = orbit == 0 ? -.55 : .55;
+                        for (int i = 0; i < 105; i++)
+                        {
+                            double angle = i * Math.PI * 2 / 105;
+                            double x = Math.Cos(angle) * 47, y = Math.Sin(angle) * 18;
+                            double light = Math.Pow(1 - Wrap(i / 105.0 - phase * (orbit == 0 ? .55 : -.55)), 2);
+                            Dot(dc, 102 + x * Math.Cos(tilt) - y * Math.Sin(tilt), 55 + x * Math.Sin(tilt) + y * Math.Cos(tilt), light);
+                        }
+                    }
+                    Block(dc, 99, 52, 6, 6, .8);
+                    break;
+                case 3:
+                    Corners(dc);
+                    for (int i = 0; i < 12; i++)
+                    {
+                        double angle = i * Math.PI / 6 - Math.PI / 2;
+                        double light = 1 - Wrap(i / 12.0 - phase * .6);
+                        for (int length = 0; length < 5; length++) for (int width = -1; width <= 1; width++)
+                            Dot(dc, 102 + Math.Cos(angle) * (20 + length * 2.2) - Math.Sin(angle) * width * 2.2,
+                                53 + Math.Sin(angle) * (20 + length * 2.2) + Math.Cos(angle) * width * 2.2, light);
+                    }
+                    for (int i = 0; i < 9; i++) Block(dc, 62 + i * 9, 94, 5, 4, 1 - Wrap(i / 9.0 - phase * .7));
+                    break;
+                case 4:
+                    Corners(dc);
+                    double scan = 102 + Math.Sin(phase * 2.5) * 49;
+                    for (int row = 0; row < 5; row++) for (int col = 0; col < 11; col++)
+                    {
+                        double x = 52 + col * 10, light = Math.Exp(-Math.Abs(x - scan) / 17);
+                        Block(dc, x, 32 + row * 10, 4, 4, light);
+                    }
+                    Segment(dc, scan, 30, scan, 80, 1);
+                    break;
+                case 5:
+                    for (int i = 0; i < 6; i++)
+                    {
+                        double wave = Pulse(phase * 4 - i * .65), centerX = 57 + i * 18, centerY = 56 - wave * 12;
+                        for (int y = -5; y <= 5; y += 2) for (int x = -5; x <= 5; x += 2)
+                            if (x * x + y * y < 29) Dot(dc, centerX + x, centerY + y, .35 + .65 * wave);
+                    }
+                    break;
+                default:
+                    for (int i = 0; i < 6; i++)
+                    {
+                        double wave = Pulse(phase * 4.5 - i * .65), height = 14 + 36 * wave;
+                        Block(dc, 62 + i * 15, 55 - height / 2, 5, height, .35 + .65 * wave);
+                    }
+                    break;
             }
         }
     }
@@ -133,7 +166,7 @@ namespace OrbitCalendar
         void BeginDataLoading(CancellationTokenSource owner)
         {
             dataLoadingOwner = owner;
-            mainLoadingParticles.SetMode(mode); loadingClock.Restart();
+            mainLoadingParticles.Restart(); loadingClock.Restart();
             var host = Get<Grid>("LoadingArea");
             var toolbar = Get<Grid>("DataChoices");
             var choices = PanelBounds(toolbar.Visibility == Visibility.Visible ? toolbar : Get<Grid>("DataStampRow"));

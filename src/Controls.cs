@@ -11,11 +11,11 @@ namespace OrbitCalendar
     internal static class Preferences
     {
         static readonly string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OrbitCalendar", "display.txt");
-        public static int Pattern, Motion = 6, Minutes = 30, LastTab, LoadingMotion;
+        public static int Pattern, Motion = 6, Minutes = 30, LastTab, LoadingStyle;
         static Preferences() { Load(); }
         internal static void Load()
         {
-            Pattern = LastTab = LoadingMotion = 0; Motion = 6; Minutes = 30;
+            Pattern = LastTab = LoadingStyle = 0; Motion = 6; Minutes = 30;
             try
             {
                 var parts = File.ReadAllLines(path);
@@ -24,14 +24,14 @@ namespace OrbitCalendar
                 if (parts.Length > 1 && int.TryParse(parts[1], out value) && value >= 0 && value < 7) Motion = value;
                 if (parts.Length > 2 && int.TryParse(parts[2], out value) && value >= 1 && value <= 180) Minutes = value;
                 if (parts.Length > 3 && int.TryParse(parts[3], out value) && value >= 0 && value <= 4) LastTab = value;
-                if (parts.Length > 4 && int.TryParse(parts[4], out value) && value >= 0 && value < 4) LoadingMotion = value;
+                if (parts.Length > 4 && int.TryParse(parts[4], out value) && value >= 0 && value < 6) LoadingStyle = value;
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
         public static void Save()
         {
-            try { Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path, new[] { Pattern.ToString(), Motion.ToString(), Minutes.ToString(), LastTab.ToString(), LoadingMotion.ToString() }); }
+            try { Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path, new[] { Pattern.ToString(), Motion.ToString(), Minutes.ToString(), LastTab.ToString(), LoadingStyle.ToString() }); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
@@ -140,9 +140,9 @@ namespace OrbitCalendar
                 Preferences.Motion = value;
                 PreviewSetting();
             });
-            FillChoices("LoadingChoices", new[] { "集合と拡散", "渦巻き", "ウェーブ", "漂う粒子" }, Preferences.LoadingMotion, delegate(int value)
+            FillChoices("LoadingChoices", new[] { "6本バー", "円形スピナー", "軌道リング", "ゲーム風", "スキャン", "ドットウェーブ" }, Preferences.LoadingStyle, delegate(int value)
             {
-                Preferences.LoadingMotion = value;
+                Preferences.LoadingStyle = value;
                 PreviewSetting();
             });
         }
@@ -154,7 +154,7 @@ namespace OrbitCalendar
             Get<StackPanel>("LoadingSettings").Visibility = showLoadingSettings ? Visibility.Visible : Visibility.Collapsed;
             Get<Button>("SettingsTransition").Background = Art.Ink(showLoadingSettings ? "#193B48" : "#287181");
             Get<Button>("SettingsLoading").Background = Art.Ink(showLoadingSettings ? "#287181" : "#193B48");
-            if (showLoadingSettings) { settingsLoadingParticles.SetMode(mode == 0 ? 2 : mode); previewLoadingClock.Restart(); }
+            if (showLoadingSettings) { settingsLoadingParticles.Restart(); previewLoadingClock.Restart(); }
         }
 
         void ReplaySettingPreview()
