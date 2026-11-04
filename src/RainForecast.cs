@@ -46,9 +46,11 @@ namespace OrbitCalendar
             Dictionary<string, Task<byte[]>> requests)
         {
             bool hourly = time.Product == "rasrf";
-            // Short-range forecast tiles use even zoom levels. Crop and scale the
-            // parent tile at odd levels, preserving alignment with the base map.
-            int nativeZoom = hourly ? Math.Min(10, zoom - zoom % 2) : Math.Min(10, zoom);
+            // Both hrpns and rasrf publish their useful tiles at even zoom levels.
+            // Odd hrpns URLs can return HTTP 200 with a transparent placeholder,
+            // which must not be interpreted as an absence of rain. Crop the even
+            // parent at odd/higher levels without changing its intensity colors.
+            int nativeZoom = Math.Min(10, zoom - zoom % 2);
             int factor = 1 << (zoom - nativeZoom);
             string product = hourly ? "rasrf" : "nowc", element = hourly ? "rasrf" : "hrpns";
             string member = string.IsNullOrEmpty(time.member) ? "none" : Uri.EscapeDataString(time.member);

@@ -14,7 +14,7 @@ namespace OrbitCalendar
             string[] colors = { "#F2F2FF", "#A0D2FF", "#218CFF", "#0041FF", "#FFF500", "#FF9900", "#FF2800", "#B40068" };
             string[] numbers = { "<1", "1", "5", "10", "20", "30", "50", "80+" };
             var canvas = Get<Canvas>("RainLegendBar");
-            const double width = 36;
+            const double width = (LiveData.MapWidth - 68) / 8.0;
             for (int i = 0; i < colors.Length; i++)
             {
                 var color = new Rectangle { Width = width, Height = 8, Fill = Art.Ink(colors[i]),

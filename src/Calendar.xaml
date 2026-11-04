@@ -120,7 +120,7 @@
         </StackPanel>
         </Grid>
         <TextBlock Name="MapHint" FontFamily="Segoe UI" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Foreground="#B9D7DE" FontSize="12" Margin="0,5,0,0" Visibility="Collapsed"/>
-        <Grid Name="RainLegend" Width="356" HorizontalAlignment="Left" Height="27" Margin="0,8,0,1" Visibility="Collapsed">
+        <Grid Name="RainLegend" Width="414" HorizontalAlignment="Left" Height="27" Margin="0,8,0,1" Visibility="Collapsed">
           <Grid.ColumnDefinitions><ColumnDefinition Width="68"/><ColumnDefinition/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center"><TextBlock Name="RainLegendTitle" Text="降水強度" Foreground="#D5EAEC" FontSize="9"/><TextBlock Name="RainLegendUnit" Text="(mm/h)" Foreground="#AFCAD2" FontSize="9"/></StackPanel>
           <Canvas Name="RainLegendBar" Grid.Column="1" IsHitTestVisible="False"/>

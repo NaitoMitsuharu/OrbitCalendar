@@ -92,7 +92,8 @@ namespace OrbitCalendar
         {
             get { return new[] { SavedPlace.Coordinate == null ? "現在地" : "保存地点", "日本広域", "関東", "関西" }; }
         }
-        public const int MapWidth = 356, MapHeight = 190;
+        public const int MapWidth = 414, MapHeight = 190;
+        public const int TimelineWidth = 356;
 
         internal static async Task<byte[]> Get(string url, CancellationToken token, bool missingAllowed = false)
         {

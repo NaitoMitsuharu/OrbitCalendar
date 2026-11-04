@@ -151,11 +151,11 @@ namespace OrbitCalendar
             var temperatures = Enumerable.Range(0, 61).Select(i => f.Temperature(radarOrigin.AddMinutes(maximum * i / 60)).Value).ToArray();
             temperatureLow = temperatures.Min() - .5; temperatureHigh = temperatures.Max() + .5;
             var line = new Polyline { Stroke = Art.Ink("#F4B09F"), StrokeThickness = 1.6 };
-            for (int i = 0; i < temperatures.Length; i++) line.Points.Add(new Point(LiveData.MapWidth * i / 60.0, TemperatureY(temperatures[i])));
+            for (int i = 0; i < temperatures.Length; i++) line.Points.Add(new Point(LiveData.TimelineWidth * i / 60.0, TemperatureY(temperatures[i])));
             plot.Children.Add(line);
             temperatureCursor = new Line { Y1 = 0, Y2 = 46, Stroke = Art.Ink("#7CB6BE"), StrokeThickness = 1 };
             temperatureDot = new Ellipse { Width = 6, Height = 6, Fill = Art.Ink("#FFE18B") };
-            temperatureValue = WeatherText("", 14, "#F4DD8E"); Canvas.SetTop(temperatureValue, 11); Canvas.SetLeft(temperatureValue, LiveData.MapWidth + 7);
+            temperatureValue = WeatherText("", 14, "#F4DD8E"); Canvas.SetTop(temperatureValue, 11); Canvas.SetLeft(temperatureValue, LiveData.TimelineWidth + 7);
             plot.Children.Add(temperatureCursor); plot.Children.Add(temperatureDot); plot.Children.Add(temperatureValue);
             UpdateTemperature(Get<Slider>("RadarTime").Value);
         }
@@ -165,7 +165,7 @@ namespace OrbitCalendar
             if (temperatureCursor == null || weatherForecast == null) return;
             var v = weatherForecast.Temperature(radarOrigin.AddMinutes(minute));
             if (!v.HasValue) return;
-            double x = LiveData.MapWidth * minute / Math.Max(1, Get<Slider>("RadarTime").Maximum);
+            double x = LiveData.TimelineWidth * minute / Math.Max(1, Get<Slider>("RadarTime").Maximum);
             temperatureCursor.X1 = temperatureCursor.X2 = x;
             Canvas.SetLeft(temperatureDot, x - 3); Canvas.SetTop(temperatureDot, TemperatureY(v.Value) - 3);
             temperatureValue.Text = v.Value.ToString("0.0") + "°C";

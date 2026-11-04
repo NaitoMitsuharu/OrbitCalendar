@@ -14,6 +14,32 @@ namespace OrbitCalendar
         readonly DispatcherTimer zoomWait = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         Point? dragStart;
         DateTime lastMapDraw;
+        readonly MapWheelZoom mapWheel = new MapWheelZoom();
+
+        void ZoomMap(int delta, Point at, DateTime now)
+        {
+            if (mode != 2 || activeWeather == null) return;
+            int step = mapWheel.Step(delta, now);
+            if (step == 0) return;
+            var start = mapViewport ?? activeWeather.Viewport;
+            int zoom = Math.Max(4, Math.Min(18, start.Zoom + step));
+            if (zoom == start.Zoom) return;
+            StopRadar();
+            if (selectingPlace) Get<Button>("SavePlace").IsEnabled = false;
+            double oldScale = start.Zoom == 4 ? .76 : .88, newScale = zoom == 4 ? .76 : .88;
+            double factor = Math.Pow(2, zoom - start.Zoom);
+            mapViewport = MoveMap(start, (at.X - LiveData.MapWidth / 2.0) * (1 - factor * newScale / oldScale),
+                (at.Y - LiveData.MapHeight / 2.0) * (1 - factor * newScale / oldScale), zoom);
+            nextUpdate = DateTime.MinValue;
+            if (!selectingPlace) saved.Remove(20 + choice[2]);
+            if (!selectingPlace && !MapScale.Remember(choice[2], zoom))
+            {
+                Get<TextBlock>("MapHint").Text = "縮尺を保存できませんでした。次回の拡大縮小で再試行します";
+                Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
+            }
+            if (loading != null) loading.Cancel();
+            zoomWait.Stop(); zoomWait.Start();
+        }
 
         static LiveData.Viewport MoveMap(LiveData.Viewport start, double dx, double dy, int zoom)
         {
@@ -36,25 +62,7 @@ namespace OrbitCalendar
             {
                 if (mode != 2 || activeWeather == null) return;
                 e.Handled = true;
-                StopRadar();
-                var start = mapViewport ?? activeWeather.Viewport;
-                int zoom = Math.Max(4, Math.Min(18, start.Zoom + Math.Sign(e.Delta)));
-                if (zoom == start.Zoom) return;
-                if (selectingPlace) Get<Button>("SavePlace").IsEnabled = false;
-                Point at = e.GetPosition(plot);
-                double oldScale = start.Zoom == 4 ? .76 : .88, newScale = zoom == 4 ? .76 : .88;
-                double factor = Math.Pow(2, zoom - start.Zoom);
-                mapViewport = MoveMap(start, (at.X - LiveData.MapWidth / 2.0) * (1 - factor * newScale / oldScale),
-                    (at.Y - LiveData.MapHeight / 2.0) * (1 - factor * newScale / oldScale), zoom);
-                nextUpdate = DateTime.MinValue;
-                if (!selectingPlace) saved.Remove(20 + choice[2]);
-                if (!selectingPlace && !MapScale.Remember(choice[2], zoom))
-                {
-                    Get<TextBlock>("MapHint").Text = "縮尺を保存できませんでした。次回の拡大縮小で再試行します";
-                    Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
-                }
-                if (loading != null) loading.Cancel();
-                zoomWait.Stop(); zoomWait.Start();
+                ZoomMap(e.Delta, e.GetPosition(plot), DateTime.UtcNow);
             };
             plot.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
             {
@@ -82,7 +90,7 @@ namespace OrbitCalendar
                 foreach (UIElement child in plot.Children) child.RenderTransform = Transform.Identity;
                 effect.Refresh();
             };
-            IsVisibleChanged += delegate { if (!IsVisible) { zoomWait.Stop(); plot.ReleaseMouseCapture(); } };
+            IsVisibleChanged += delegate { if (!IsVisible) { zoomWait.Stop(); mapWheel.Reset(); plot.ReleaseMouseCapture(); } };
         }
         void CompleteMapDrag(Vector delta, Point at)
         {
