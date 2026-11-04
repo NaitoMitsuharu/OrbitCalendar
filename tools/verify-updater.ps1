@@ -40,7 +40,7 @@ $release.draft=$true;Reject {Call $updates 'Parse' @($json.Serialize($release))}
 $asset.browser_download_url='https://example.com/OrbitCalendar.exe';Reject {Call $updates 'Parse' @($json.Serialize($release))} 'Untrusted download URL accepted';$asset.browser_download_url='https://github.com/NaitoMitsuharu/OrbitCalendar/releases/download/v9.0.0/OrbitCalendar.exe'
 $asset.digest=$null;Reject {Call $updates 'Parse' @($json.Serialize($release))} 'Missing digest accepted';$asset.digest='sha256:'+('a'*64)
 $asset.size=1000000000;Reject {Call $updates 'Parse' @($json.Serialize($release))} 'Oversize asset accepted';$asset.size=2048
-$release.tag_name='v1.26.0';$asset.browser_download_url='https://github.com/NaitoMitsuharu/OrbitCalendar/releases/download/v1.26.0/OrbitCalendar.exe';$r=Call $updates 'Parse' @($json.Serialize($release));Assert (-not $r.IsNew) 'Equal version offers reinstall'
+$release.tag_name='v'+$a.GetName().Version.ToString(3);$asset.browser_download_url='https://github.com/NaitoMitsuharu/OrbitCalendar/releases/download/'+$release.tag_name+'/OrbitCalendar.exe';$r=Call $updates 'Parse' @($json.Serialize($release));Assert (-not $r.IsNew) 'Equal version offers reinstall'
 Reject {Call $updates 'Verify' @($exe,('a'*64),[version]'1.26.0.0')} 'Bad checksum accepted'
 Reject {Call $updates 'Verify' @($exe,(Hash $exe),[version]'2.0.0.0')} 'Wrong assembly version accepted'
 Assert (-not(Call $updates 'IsWorkDirectory' @($folder))) 'Unsafe cleanup directory accepted'

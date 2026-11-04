@@ -38,7 +38,7 @@ namespace OrbitCalendar
                 catch (Exception ex) { if (!(ex is System.IO.IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)) throw; tray.ShowBalloonTip(4000, "Orbit Calendar", "自動起動を保存できませんでした。もう一度お試しください", Forms.ToolTipIcon.Warning); }
             };
             menu.Items.Add(startup); menu.Opening += delegate { startup.Checked = StartupRegistration.Enabled; };
-            menu.Items.Add("アプリの更新…", null, delegate { Open(); panel.OpenUpdates(); });
+            menu.Items.Add("更新を確認…", null, delegate { Open(); panel.OpenUpdates(); });
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("Orbit Calendar を終了", null, delegate { Application.Current.Shutdown(); });
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)
@@ -51,6 +51,7 @@ namespace OrbitCalendar
             panel.IsVisibleChanged += delegate { if (!exiting && !panel.IsVisible) Update(); };
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += DisplayChanged;
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += PreferencesChanged;
+            if (integrateDesktop) panel.StartUpdateChecks();
         }
 
         internal static void StyleWindow(Window w)
@@ -134,6 +135,7 @@ namespace OrbitCalendar
         public void Dispose()
         {
             exiting = true;
+            panel.StopUpdateChecks();
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplayChanged;
             Microsoft.Win32.SystemEvents.UserPreferenceChanged -= PreferencesChanged;
             tick.Stop();

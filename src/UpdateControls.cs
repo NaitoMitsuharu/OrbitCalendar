@@ -13,8 +13,11 @@ namespace OrbitCalendar
         CancellationTokenSource updateRequest;
         AppUpdates.Release availableUpdate;
         bool installingUpdate;
+        readonly UpdateMonitor updateMonitor = new UpdateMonitor();
         void InitializeUpdates()
         {
+            updateMonitor.Changed += SetUpdateNotice;
+            SetUpdateNotice(null);
             Get<Button>("UpdateButton").Click += delegate { OpenUpdates(); };
             Get<Button>("CloseUpdatePicker").Click += delegate { CloseUpdates(true); };
             Get<Button>("CheckUpdate").Click += async delegate { await CheckUpdate(); };
@@ -24,7 +27,19 @@ namespace OrbitCalendar
             picker.PreviewKeyDown += delegate { FinishMarketTransition(); };
             root.PreviewMouseDown += delegate(object sender, System.Windows.Input.MouseButtonEventArgs e) { if (installingUpdate) e.Handled = true; };
             IsVisibleChanged += delegate { if (!IsVisible) CloseUpdates(false); };
-            Closed += delegate { CloseUpdates(false); };
+            Closed += delegate { CloseUpdates(false); updateMonitor.Dispose(); };
+        }
+        internal void StartUpdateChecks() { updateMonitor.Start(); }
+        internal void StopUpdateChecks() { updateMonitor.Dispose(); }
+        void SetUpdateNotice(AppUpdates.Release release)
+        {
+            bool newer = release != null && release.IsNew;
+            var button = Get<Button>("UpdateButton");
+            button.Visibility = newer ? Visibility.Visible : Visibility.Collapsed;
+            button.ToolTip = newer ? "v" + release.Version.ToString(3) + " に更新できます" : "アプリの更新";
+            // Refresh queues a capture if particles are still assembling; a partial
+            // refresh would otherwise miss a notice arriving during the opening.
+            if (IsVisible && Get<Border>("SettingsPicker").Visibility == Visibility.Visible) effect.Refresh();
         }
         internal async void OpenUpdates()
         {
@@ -55,6 +70,7 @@ namespace OrbitCalendar
             Get<TextBlock>("UpdateStatus").Text = message;
             Get<Button>("CheckUpdate").IsEnabled = !busy;
             Get<Button>("InstallUpdate").IsEnabled = install && !busy;
+            Get<Button>("InstallUpdate").Visibility = install || availableUpdate != null ? Visibility.Visible : Visibility.Collapsed;
             Get<Border>("UpdateProgressTrack").Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
             Get<TextBlock>("UpdateProgressText").Text = "";
             Get<Border>("UpdateProgressFill").Width = 0;
@@ -69,7 +85,9 @@ namespace OrbitCalendar
             Get<TextBlock>("UpdateNotes").Text = "";
             try
             {
-                var release = await AppUpdates.Check(request.Token);
+                // Closing this popup cancels its presentation. The shared check may
+                // still update the notice and the background schedule.
+                var release = await updateMonitor.CheckNow();
                 if (request.IsCancellationRequested || updateRequest != request) return;
                 PresentUpdate(release);
             }
@@ -84,6 +102,7 @@ namespace OrbitCalendar
         void PresentUpdate(AppUpdates.Release release)
         {
             FinishMarketTransition();
+            SetUpdateNotice(release);
             availableUpdate = release.IsNew ? release : null;
             UpdateStatus(release.IsNew ? "v" + release.Version.ToString(3) + " に更新できます" : "最新版を使用しています", false, release.IsNew);
             string notes = release.Notes ?? "";

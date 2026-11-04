@@ -148,7 +148,7 @@
               Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="13" Visibility="Collapsed">
         <StackPanel>
           <Grid Margin="3,0,3,7">
-            <StackPanel Orientation="Horizontal"><TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="SettingsMarkets" Content="銘柄の管理 →" Margin="14,0,0,0" Background="#193B48"/><Button Name="StartupToggle" Content="自動起動 OFF" FontSize="11" Padding="6,3" Margin="8,0,0,0" Background="#193B48"/><Button Name="UpdateButton" Content="更新" FontSize="11" Padding="6,3" Margin="6,0,0,0" Background="#193B48" ToolTip="アプリの更新"/></StackPanel>
+            <StackPanel Orientation="Horizontal"><TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="SettingsMarkets" Content="銘柄の管理 →" Margin="14,0,0,0" Background="#193B48"/><Button Name="StartupToggle" Content="自動起動 OFF" FontSize="11" Padding="6,3" Margin="8,0,0,0" Background="#193B48"/><Button Name="UpdateButton" Content="更新" FontSize="11" Padding="6,3" Margin="6,0,0,0" Background="#287181" ToolTip="アプリの更新" Visibility="Collapsed"/></StackPanel>
             <Button Name="CloseSettingsPicker" AutomationProperties.Name="設定を閉じる" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
           </Grid>
           <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
