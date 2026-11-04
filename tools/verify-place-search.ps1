@@ -60,7 +60,7 @@ try{
  Assert ($picker.Visibility -eq 'Collapsed' -and $pt.GetField('selectingPlace',$if).GetValue($panel)) 'Selection did not open map confirmation'
  $candidate=$pt.GetField('candidatePlace',$if).GetValue($panel);Assert ($candidate -eq $station[0].Coordinate) 'Selected candidate changed'
  $view=$pt.GetField('activeWeather',$if).GetValue($panel);Assert ([Math]::Abs($view.Viewport.Latitude-$candidate.Latitude) -lt .0001) 'Map did not center on candidate'
- Assert ($root.FindName('PlaceConfirm').Visibility -eq 'Visible' -and $root.FindName('SavePlace').IsEnabled -and $root.FindName('PlaceSummary').Text.Contains('天王町駅')) 'Map confirmation missing'
+ Assert ($root.FindName('PlaceConfirm').Visibility -eq 'Visible' -and $root.FindName('SavePlace').IsEnabled -and $root.FindName('CandidatePlaceName').Text -eq '天王町駅') 'Map confirmation missing'
  Assert (-not [IO.File]::Exists((Join-Path $folder 'location.txt'))) 'Candidate saved without explicit confirmation'
  Snapshot 'place-search-confirm.png'
  Click 'SavePlace';WaitLoading
@@ -77,7 +77,7 @@ try{
  $nameProperty.SetValue($null,'discard-in-memory-name',$null);$reloaded=$place.GetMethod('Load',$sf).Invoke($null,@());Assert ($nameProperty.GetValue($null,$null) -eq '天王町駅') 'Name not restored from disk';Assert ([Math]::Abs($reloaded.Latitude-$candidate.Latitude) -lt .000001) 'Saved coordinates not reloadable'
  Click 'PickPlace';Pump 1900;Click 'PickOnMap';Pump 900;Assert ($pt.GetField('selectingPlace',$if).GetValue($panel) -and $root.FindName('PlaceConfirm').Visibility -eq 'Collapsed') 'Manual map selection unavailable'
  Call 'SelectPlaceAt' @([Windows.Point]::new(178,95))|Out-Null;Assert ($root.FindName('PlaceConfirm').Visibility -eq 'Visible') 'Manual map confirmation failed'
- Assert ($pt.GetField('candidatePlaceName',$if).GetValue($panel) -eq $null) 'Manual new point inherited old station name';Click 'CancelPlace';Assert ($place.GetProperty('Coordinate',$sf).GetValue($null,$null) -eq $candidate) 'Cancel changed saved location'
+ Assert ($root.FindName('CandidatePlaceName').Text -ne '天王町駅') 'Manual new point inherited old station name';Click 'CancelPlace';Assert ($place.GetProperty('Coordinate',$sf).GetValue($null,$null) -eq $candidate) 'Cancel changed saved location'
  Click 'PickPlace';Pump 1900;$root.FindName('PlaceQuery').Text='架空の地点検索qz987654321';Click 'SearchPlace';WaitSearch;Assert ($root.FindName('PlaceResults').Children.Count -eq 0 -and $root.FindName('PlaceSearchMessage').Text.Contains('候補がありません')) 'Empty search lacks useful fallback'
  $root.FindName('PlaceQuery').Text='千葉駅';Click 'SearchPlace';Assert ($root.FindName('PlaceSearchLoading').Visibility -eq 'Visible') 'Particle loader not shown'
  $root.FindName('PlaceQuery').Text='横浜駅';Assert ($null -eq $pt.GetField('placeSearching',$if).GetValue($panel)) 'Editing query did not cancel request'

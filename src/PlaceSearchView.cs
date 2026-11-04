@@ -156,6 +156,7 @@ namespace OrbitCalendar
         {
             if (activeWeather == null) return;
             StopRadar(); selectingPlace = true; candidatePlace = null; candidatePlaceName = null;
+            Get<TextBox>("CandidatePlaceName").Text = "地点" + (SavedPlace.Entries.Count + 1);
             Get<Canvas>("Plot").Cursor = Cursors.Cross; Get<Button>("PickPlace").Content = "＋ 地点";
             Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
             Get<TextBlock>("MapHint").Text = "地図をクリックして基準地点を指定してください"; effect.Refresh();
@@ -164,8 +165,8 @@ namespace OrbitCalendar
         void SelectSearchPlace(PlaceSearch.Result result)
         {
             ClosePlaceSearch(true); BeginMapPlaceSelection(); selectingPlace = true; candidatePlace = result.Coordinate; candidatePlaceName = result.Name;
-            Get<TextBlock>("PlaceSummary").Text = result.Name + "\n" + result.Position;
-            Get<Border>("PlaceConfirm").Visibility = Visibility.Visible;
+            Get<TextBox>("CandidatePlaceName").Text = result.Name;
+            ShowCandidateConfirmation();
             mapViewport = new LiveData.Viewport { Latitude = result.Coordinate.Latitude, Longitude = result.Coordinate.Longitude, Zoom = MapScale.ForRegion(0), Name = "検索候補周辺", Marker = activeWeather == null ? SavedPlace.Coordinate : activeWeather.Viewport.Marker };
             Get<Button>("SavePlace").IsEnabled = false;
             choice[2] = 0; LoadView(false);
