@@ -148,13 +148,13 @@
               Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="13" Visibility="Collapsed">
         <StackPanel>
           <Grid Margin="3,0,3,7">
-            <StackPanel Orientation="Horizontal"><TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="SettingsMarkets" Content="銘柄の管理 →" Margin="14,0,0,0" Background="#193B48"/><Button Name="StartupToggle" Content="自動起動 OFF" FontSize="11" Padding="6,3" Margin="8,0,0,0" Background="#193B48"/><Button Name="UpdateButton" Content="更新" FontSize="11" Padding="6,3" Margin="6,0,0,0" Background="#287181" ToolTip="アプリの更新" Visibility="Collapsed"/></StackPanel>
+            <StackPanel Orientation="Horizontal"><TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="SettingsMarkets" Content="銘柄管理 →" Margin="10,0,0,0" Background="#193B48"/><Button Name="StartupToggle" Content="自動起動 OFF" FontSize="11" Padding="6,3" Margin="8,0,0,0" Background="#193B48"/><Button Name="UpdateButton" Content="アプリ更新" FontSize="11" Padding="6,3" Margin="6,0,0,0" Background="#287181" ToolTip="Orbit Calendarを最新版に更新" Visibility="Collapsed"/></StackPanel>
             <Button Name="CloseSettingsPicker" AutomationProperties.Name="設定を閉じる" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
           </Grid>
           <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
           <UniformGrid Name="PatternChoices" Columns="4"/>
           <StackPanel Orientation="Horizontal" Margin="4,9,4,3"><Button Name="SettingsTransition" Content="画面切り替え"/><Button Name="SettingsLoading" Content="読み込み中" Margin="6,0,0,0"/></StackPanel>
-          <Grid Height="256"><StackPanel Name="TransitionSettings">
+          <Grid Name="SettingsSection" Height="180"><StackPanel Name="TransitionSettings">
           <TextBlock Text="組み上がり方" Foreground="#92B5BE" FontSize="12" Margin="4,9,0,3"/>
           <UniformGrid Name="MotionChoices" Columns="3"/>
           <Border Name="PreviewArea" BorderBrush="#2A5965" BorderThickness="1" CornerRadius="6" Padding="12" Margin="4,10,4,3">
@@ -187,6 +187,7 @@
     </Grid>
     </Grid>
     <Grid Name="Effects" IsHitTestVisible="False" ClipToBounds="True"/>
+    <Grid IsHitTestVisible="False" RenderTransform="{Binding RenderTransform, ElementName=ShellSurface}" RenderTransformOrigin="{Binding RenderTransformOrigin, ElementName=ShellSurface}"><Ellipse Name="AppUpdateBadge" Width="7" Height="7" Fill="#FFD65B" Stroke="#0B1923" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,18,0" Visibility="Collapsed" IsHitTestVisible="False"/></Grid>
     <Border Name="PlaceConfirm" Width="400" Height="74" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="#102835" Padding="7" BorderThickness="1" BorderBrush="#528793" CornerRadius="6" Margin="0,0,0,51" Visibility="Collapsed">
       <Grid><Grid.RowDefinitions><RowDefinition Height="28"/><RowDefinition Height="25"/></Grid.RowDefinitions>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>

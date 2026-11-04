@@ -25,6 +25,9 @@ namespace OrbitCalendar
 
         internal Shell(bool integrateDesktop)
         {
+            // Forward WPF's message loop to the WinForms clock/tray popups too.
+            // Without this, a popup may appear but its clicks/keys are not routed.
+            System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();
             panel = new CalendarPanel(Collapse, ToggleFocus);
             countdown = new ParticleTimer(Open);
             tray = new Forms.NotifyIcon { Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location),
@@ -38,7 +41,7 @@ namespace OrbitCalendar
                 catch (Exception ex) { if (!(ex is System.IO.IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)) throw; tray.ShowBalloonTip(4000, "Orbit Calendar", "自動起動を保存できませんでした。もう一度お試しください", Forms.ToolTipIcon.Warning); }
             };
             menu.Items.Add(startup); menu.Opening += delegate { startup.Checked = StartupRegistration.Enabled; };
-            menu.Items.Add("更新を確認…", null, delegate { Open(); panel.OpenUpdates(); });
+            menu.Items.Add("アプリの更新を確認…", null, delegate { Open(); panel.OpenUpdates(); });
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("Orbit Calendar を終了", null, delegate { Application.Current.Shutdown(); });
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)

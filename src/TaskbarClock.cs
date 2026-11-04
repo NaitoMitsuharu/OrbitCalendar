@@ -13,6 +13,7 @@ namespace OrbitCalendar
     internal sealed class TaskbarClock : Forms.Control
     {
         readonly IntPtr taskbar;
+        readonly Forms.ContextMenuStrip menu;
         [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint key, byte alpha, uint flags);
         protected override Forms.CreateParams CreateParams
         {
@@ -29,12 +30,37 @@ namespace OrbitCalendar
         internal TaskbarClock(IntPtr taskbar, Action toggle, Forms.ContextMenuStrip menu)
         {
             this.taskbar = taskbar;
+            this.menu = menu;
             AccessibleName = "Orbit Calendar タスクバー時計";
             AccessibleRole = Forms.AccessibleRole.PushButton;
-            ContextMenuStrip = menu;
             Cursor = Forms.Cursors.Hand;
             SetStyle(Forms.ControlStyles.StandardDoubleClick, false);
             MouseClick += delegate(object sender, Forms.MouseEventArgs e) { if (e.Button == Forms.MouseButtons.Left) toggle(); };
+        }
+
+        // Explorer is the native parent, so WinForms' implicit ContextMenuStrip
+        // routing cannot find an owning Form. Handle the right-button release
+        // directly and show an application-owned popup in screen coordinates.
+        protected override void WndProc(ref Forms.Message message)
+        {
+            if (message.Msg == 0x205) // RBUTTONUP
+            {
+                // Complete MouseUp first so the clock releases mouse capture;
+                // otherwise the first menu click is swallowed by the clock.
+                base.WndProc(ref message);
+                BeginInvoke(new Action(ShowClockMenu));
+                message.Result = IntPtr.Zero; return;
+            }
+            if (message.Msg == 0x7B) // CONTEXTMENU, including keyboard invocation
+            {
+                BeginInvoke(new Action(ShowClockMenu)); message.Result = IntPtr.Zero; return;
+            }
+            base.WndProc(ref message);
+        }
+        internal void ShowClockMenu()
+        {
+            if (IsDisposed || Disposing || !IsHandleCreated || menu == null || menu.IsDisposed || menu.Visible) return;
+            menu.Show(Forms.Cursor.Position);
         }
 
         // Let Explorer draw the date, time, and theme. Alpha 1 still accepts clicks.

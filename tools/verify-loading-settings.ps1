@@ -1,8 +1,9 @@
-﻿$ErrorActionPreference='Stop'
+﻿param([string]$Executable='build/OrbitCalendar.exe')
+$ErrorActionPreference='Stop'
 Set-Location (Split-Path $PSScriptRoot)
 Add-Type -AssemblyName WindowsBase,PresentationCore,PresentationFramework,System.Device
 [Threading.SynchronizationContext]::SetSynchronizationContext([Windows.Threading.DispatcherSynchronizationContext]::new())
-$a=[Reflection.Assembly]::LoadFrom((Resolve-Path build/OrbitCalendar.exe));$sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
+$a=[Reflection.Assembly]::LoadFrom((Resolve-Path $Executable));$sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
 $folder=Join-Path $env:TEMP ('orbit-loading-settings-qa-'+[guid]::NewGuid());New-Item -ItemType Directory $folder|Out-Null
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'));$watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
 $prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0);$prefs.GetField('AnimationSpeed',$sf).SetValue($null,1)
@@ -75,7 +76,7 @@ try{
  Click 'ReplayPreview';Assert ($particles.Phase -lt .2) 'Replay did not restart preview'
  Click 'SettingsTransition';Pump 1900;Assert ($transition.Visibility -eq 'Visible') 'Cannot return to transition settings'
  # Transition and loading settings must be independent.
- $root.FindName('MotionChoices').Children[2].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Assert ($prefs.GetField('Motion',$sf).GetValue($null) -eq 2 -and $setting.GetValue($null) -eq 5) 'Transition choice overwrote loading motion'
+ $root.FindName('MotionChoices').Children[2].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Assert ($prefs.GetField('Motion',$sf).GetValue($null) -eq 8 -and $setting.GetValue($null) -eq 5) 'Transition choice overwrote loading motion'
  Click 'SettingsLoading';Pump 1900;Snapshot 'loading-settings.png'
  Click 'CloseSettingsPicker';Pump 1900;Click 'SettingsButton';Pump 1900;Assert ($loadingSettings.Visibility -eq 'Visible' -and $setting.GetValue($null) -eq 5) 'Reopening settings lost selection'
  Click 'CloseSettingsPicker';Pump 1900

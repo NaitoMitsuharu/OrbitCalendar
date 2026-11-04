@@ -20,11 +20,19 @@ function Bounds($el){$panel.UpdateLayout();return $el.TransformToAncestor($root)
 function Snapshot($name){Pump 200;$panel.UpdateLayout();$im=[Windows.Media.Imaging.RenderTargetBitmap]::new(458,[int]$root.Height,96,96,[Windows.Media.PixelFormats]::Pbgra32);$visual=[Windows.Media.DrawingVisual]::new();$dc=$visual.RenderOpen();$brush=[Windows.Media.VisualBrush]::new($root);$brush.ViewboxUnits=[Windows.Media.BrushMappingMode]::Absolute;$brush.Viewbox=[Windows.Rect]::new(0,0,458,$root.Height);$brush.Stretch=[Windows.Media.Stretch]::Fill;$dc.DrawRectangle($brush,$null,[Windows.Rect]::new(0,0,458,$root.Height));$dc.Close();$im.Render($visual);$encoder=[Windows.Media.Imaging.PngBitmapEncoder]::new();$encoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($im));$stream=[IO.File]::Create((Join-Path $folder $name));try{$encoder.Save($stream)}finally{$stream.Dispose()}}
 try{
  Assert ($root.FindName('UpdateButton').Visibility -eq 'Collapsed') 'Unconfirmed update notice is visible on startup'
+ Assert ($root.FindName('AppUpdateBadge').Visibility -eq 'Collapsed') 'Unconfirmed update badge is visible'
  Call 'StartUpdateChecks'|Out-Null;Pump 200
  $end=[DateTime]::UtcNow.AddSeconds(30);while(-not $monitor.Latest){Pump 100;if([DateTime]::UtcNow -gt $end){throw 'Background startup update check timeout'}}
  Assert ($root.FindName('UpdateButton').Visibility -eq 'Collapsed') 'No-update notice not hidden'
  $panel.Open();$pt.GetField('outside',$if).GetValue($panel).Enabled=$false;Pump 2000
  Click 'SettingsButton';Pump 2000
+ $loadingStyle=$prefs.GetField('LoadingStyle',$sf).GetValue($null)
+ foreach($choice in 0..2){$root.FindName('MotionChoices').Children[$choice].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Assert ($prefs.GetField('Motion',$sf).GetValue($null) -eq (6+$choice) -and $prefs.GetField('LoadingStyle',$sf).GetValue($null) -eq $loadingStyle) 'New motion choice failed or changed the data loader'}
+ $root.FindName('MotionChoices').Children[0].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent));Pump 2000
+ Click 'SettingsLoading';Pump 2000
+ Assert ($root.FindName('SettingsSection').Height -eq 256 -and $root.FindName('LoadingChoices').Children.Count -eq 6) 'Loader section no longer fits'
+ Click 'SettingsTransition';Pump 2000
+ Assert ($root.FindName('SettingsSection').Height -eq 180) 'Compact motion section did not resize'
  Snapshot 'settings-no-update.png'
  $current=$a.GetType('OrbitCalendar.AppUpdates').GetProperty('CurrentVersion',$sf).GetValue($null,$null)
  $release=[Activator]::CreateInstance($a.GetType('OrbitCalendar.AppUpdates+Release'));$release.Version=[version]::new($current.Major,($current.Minor+1),0,0);$release.Notes="地点や設定を引き継いで更新します。`n新しい機能・表示の改善。"
@@ -34,14 +42,21 @@ try{
  if($effect.Busy){Assert ($effect.GetType().GetField('dirty',$if).GetValue($effect)) 'Notice during assembly did not schedule a redraw'}
  Pump 2000
  Assert ($root.FindName('UpdateButton').Visibility -eq 'Visible') 'New release notice not displayed'
+ Assert ($root.FindName('AppUpdateBadge').Visibility -eq 'Visible' -and $root.FindName('UpdateButton').Content -eq 'アプリ更新') 'Update badge/label missing'
+ Assert ($root.FindName('MotionChoices').Children.Count -eq 3) 'Removed assembly motions remain available'
  $sb=Bounds ($root.FindName('StartupToggle'));$ub=Bounds ($root.FindName('UpdateButton'));$cb=Bounds ($root.FindName('CloseSettingsPicker'))
  Assert ($ub.Left -ge $sb.Right+3 -and $ub.Right -le $cb.Left-3) 'Update button overlaps startup/close controls'
  Snapshot 'settings-update.png'
+ $frame=[Windows.Media.Imaging.BitmapFrame]::Create([Uri]::new((Join-Path $folder 'settings-update.png')),[Windows.Media.Imaging.BitmapCreateOptions]::None,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+ $pixels=[byte[]]::new(32*32*4);$frame.CopyPixels([Windows.Int32Rect]::new(412,5,32,32),$pixels,128,0);$yellow=0
+ for($i=0;$i -lt $pixels.Length;$i+=4){if($pixels[$i+2] -gt 120 -and $pixels[$i+1] -gt 100 -and $pixels[$i] -lt 120){$yellow++}}
+ Assert ($yellow -ge 8) 'Yellow update badge is not visible in the actual screenshot'
  Click 'UpdateButton';Pump 500
  Assert ($root.FindName('UpdatePicker').Visibility -eq 'Visible' -and $root.FindName('SettingsPicker').Visibility -eq 'Collapsed') 'Update dialog not exclusive'
  $end=[DateTime]::UtcNow.AddSeconds(30);while($pt.GetField('updateRequest',$if).GetValue($panel)) {Pump 100;if([DateTime]::UtcNow -gt $end){throw 'Update check timeout'}}
  Assert ($root.FindName('CheckUpdate').IsEnabled -and -not $root.FindName('InstallUpdate').IsEnabled) 'Live latest/equal check button states invalid'
  Assert ($root.FindName('UpdateButton').Visibility -eq 'Collapsed' -and $root.FindName('InstallUpdate').Visibility -eq 'Collapsed') 'No-update buttons are still visible'
+ Assert ($root.FindName('AppUpdateBadge').Visibility -eq 'Collapsed') 'No-update badge not hidden'
  Write-Output ('Live check: '+$root.FindName('UpdateStatus').Text)
  Call 'PresentUpdate' @($release)|Out-Null
  Assert ($root.FindName('InstallUpdate').IsEnabled -and $root.FindName('UpdateStatus').Text -eq ('v'+$release.Version.ToString(3)+' に更新できます')) 'New version cannot be installed'

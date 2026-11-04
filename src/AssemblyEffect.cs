@@ -13,7 +13,7 @@ namespace OrbitCalendar
         {
             public Point Target, Origin, Current;
             public bool Edge, Moving;
-            public double Latitude, Longitude, Radius, Speed, Lag;
+            public double Longitude, Radius, Speed, Lag;
             public Color Ink;
         }
 
@@ -30,8 +30,7 @@ namespace OrbitCalendar
         double seconds;
         double timeScale = 1;
         bool assembling, morph, rendering, dirty;
-        int motionStyle, sequence;
-        const double Gather = 1.05;
+        int motionStyle;
 
         public AssemblyEffect(UIElement face, UIElement surface)
         {
@@ -104,7 +103,7 @@ namespace OrbitCalendar
         void Start(bool fromPrevious, Rect area, Rect[] regions = null)
         {
             timeScale = Preferences.AnimationScale;
-            motionStyle = Preferences.Motion == 0 ? (++sequence % 5) + 1 : Preferences.Motion;
+            motionStyle = Preferences.Motion >= 6 && Preferences.Motion <= 8 ? Preferences.Motion : 6;
             dirty = false;
             var previous = grains;
             var oldByPixel = new Dictionary<int, Grain>();
@@ -139,8 +138,6 @@ namespace OrbitCalendar
             for (int i = 0; i < grains.Length; i++)
             {
                 if (!grains[i].Moving) { grains[i].Current = grains[i].Target; continue; }
-                double lat = Math.Asin(2 * random.NextDouble() - 1);
-                grains[i].Latitude = i % 4 == 0 ? lat : Math.Round(lat * 16) / 16;
                 grains[i].Longitude = random.NextDouble() * 2 * Math.PI;
                 grains[i].Radius = i % 7 == 0 ? 102 + random.NextDouble() * 51 : 82 + random.NextDouble() * 3;
                 grains[i].Speed = i % 7 == 0 ? -2 : 2.5;
@@ -152,8 +149,14 @@ namespace OrbitCalendar
                     double spread = Math.Sqrt(-2 * Math.Log(Math.Max(1e-9, random.NextDouble()))) * 28;
                     grains[i].Origin = new Point(grains[i].Target.X * .28 + (face.RenderSize.Width - 38) * .72 + Math.Cos(angle) * spread,
                         grains[i].Target.Y * .28 + (face.RenderSize.Height - 7) * .72 + Math.Sin(angle) * spread);
+                    if (motionStyle == 7)
+                        grains[i].Origin = new Point(area.Left + random.NextDouble() * Math.Min(55, area.Width * .2),
+                            area.Top + (grains[i].Target.Y - area.Top) * .65 + Math.Sin(angle) * 24);
+                    else if (motionStyle == 8)
+                        grains[i].Origin = new Point(area.Left + area.Width * .5 + (grains[i].Target.X - area.Left - area.Width * .5) * .22 + Math.Cos(angle) * spread * .2,
+                            area.Top + area.Height * .5 + (grains[i].Target.Y - area.Top - area.Height * .5) * .22 + Math.Sin(angle) * spread * .2);
                 }
-                if (area.Width < face.RenderSize.Width && !morph)
+                if (area.Width < face.RenderSize.Width && !morph && motionStyle == 6)
                     grains[i].Origin = new Point(area.Right - 8 - random.NextDouble() * Math.Min(65, area.Width),
                         area.Bottom - 5 - random.NextDouble() * Math.Min(25, area.Height));
                 movingIndex++;
@@ -220,48 +223,29 @@ namespace OrbitCalendar
                     }
                     else
                     {
-                        double angle = g.Longitude + seconds * g.Speed;
-                        double ring = Math.Cos(g.Latitude) * g.Radius;
-                        double x = Math.Sin(angle) * ring, y = Math.Sin(g.Latitude) * g.Radius;
-                        double t = Ease((seconds - .38 - g.Lag) / Gather);
-                        double ox = .5 * w + .94 * x + .34 * y;
-                        double oy = .50 * h + .94 * y - .34 * x;
-                        if (motionStyle == 2)
+                        // Every grain follows its own destination from the first
+                        // frame, including transitions from the previous screen.
+                        double delay = (g.Edge ? .015 : .10) + g.Lag * .45;
+                        if (motionStyle == 7) delay += g.Target.X / Math.Max(1, w) * .16;
+                        double duration = motionStyle == 7 ? .91 : 1.12;
+                        double progress = Math.Max(0, Math.Min(1, (seconds - delay) / duration));
+                        double t = motionStyle == 7 ? 1 - Math.Pow(1 - progress, 3) : Ease(progress);
+                        var displacement = g.Target - g.Origin;
+                        double length = Math.Max(1, displacement.Length);
+                        double curve = Math.Sin(Math.PI * t) * Math.Min(48, length * .20);
+                        if (motionStyle == 7)
                         {
-                            double spiral = g.Longitude + seconds * (3 + g.Lag * 8);
-                            double radius = 35 + Math.Abs(g.Latitude) * 175;
-                            ox = w * .5 + Math.Cos(spiral) * radius;
-                            oy = h * .5 + Math.Sin(spiral) * radius;
+                            px = g.Origin.X + displacement.X * t - displacement.Y / length * curve;
+                            py = g.Origin.Y + displacement.Y * t + displacement.X / length * curve;
                         }
-                        else if (motionStyle == 3)
+                        else
                         {
-                            ox = (g.Longitude / (2 * Math.PI)) * w;
-                            oy = ((seconds * 280 + g.Latitude * h * 2) % (h + 180)) - 120;
+                            double drift = Math.Sin(Math.PI * progress) * (1 - progress) * 9;
+                            px = g.Origin.X + displacement.X * t + Math.Cos(g.Longitude) * drift;
+                            py = g.Origin.Y + displacement.Y * t + Math.Sin(g.Longitude) * drift;
+                            double light = .28 + .72 * t;
+                            red = (int)(red * light); green = (int)(green * light); blue = (int)(blue * light);
                         }
-                        else if (motionStyle == 4)
-                        {
-                            double radius = 50 + seconds * 240;
-                            ox = w * .5 + Math.Cos(g.Longitude) * radius;
-                            oy = h * .5 + Math.Sin(g.Longitude) * radius;
-                        }
-                        else if (motionStyle == 5)
-                        {
-                            ox = g.Longitude / (2 * Math.PI) * w;
-                            oy = h * .5 + Math.Sin(ox / 47 + seconds * 5) * (55 + Math.Abs(g.Latitude) * 100);
-                        }
-                        if (morph)
-                        {
-                            double scatter = Ease(seconds / .35);
-                            ox = g.Origin.X + (ox - g.Origin.X) * scatter;
-                            oy = g.Origin.Y + (oy - g.Origin.Y) * scatter;
-                        }
-                        double curl = Math.Sin(t * Math.PI) * 24;
-                        px = ox + (px - ox) * t + Math.Sin(angle) * curl;
-                        py = oy + (py - oy) * t + Math.Cos(angle) * curl;
-                        double light = .63 + .32 * Math.Cos(angle) * ring / g.Radius;
-                        red = (int)(29 * light * (1 - t) + red * t);
-                        green = (int)(235 * light * (1 - t) + green * t);
-                        blue = (int)(248 * light * (1 - t) + blue * t);
                     }
                 }
                 else if (Closing)

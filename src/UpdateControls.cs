@@ -37,9 +37,12 @@ namespace OrbitCalendar
             var button = Get<Button>("UpdateButton");
             button.Visibility = newer ? Visibility.Visible : Visibility.Collapsed;
             button.ToolTip = newer ? "v" + release.Version.ToString(3) + " に更新できます" : "アプリの更新";
+            Get<FrameworkElement>("AppUpdateBadge").Visibility = newer ? Visibility.Visible : Visibility.Collapsed;
+            Get<Button>("SettingsButton").ToolTip = newer ? "表示設定 · アプリ更新あり（v" + release.Version.ToString(3) + "）" : "表示設定";
+            System.Windows.Automation.AutomationProperties.SetName(Get<Button>("SettingsButton"), newer ? "表示設定（アプリ更新あり）" : "表示設定");
             // Refresh queues a capture if particles are still assembling; a partial
             // refresh would otherwise miss a notice arriving during the opening.
-            if (IsVisible && Get<Border>("SettingsPicker").Visibility == Visibility.Visible) effect.Refresh();
+            if (IsVisible) effect.Refresh();
         }
         internal async void OpenUpdates()
         {

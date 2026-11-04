@@ -9,7 +9,7 @@ if (-not $BuildVersion) { $BuildVersion = (Get-Content -LiteralPath (Join-Path $
 if ($BuildVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid build version.' }
 $out = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $PSScriptRoot 'build' }
 New-Item -ItemType Directory -Path $out -Force | Out-Null
-$references = @('PresentationCore', 'PresentationFramework', 'WindowsBase', 'UIAutomationClient', 'UIAutomationTypes') | ForEach-Object {
+$references = @('PresentationCore', 'PresentationFramework', 'WindowsBase', 'UIAutomationClient', 'UIAutomationTypes', 'WindowsFormsIntegration') | ForEach-Object {
     '/reference:' + (Join-Path $framework "WPF\$_.dll")
 }
 $references += '/reference:System.Device.dll', '/reference:System.Web.Extensions.dll', '/reference:System.Net.Http.dll', '/reference:System.Xaml.dll', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll'

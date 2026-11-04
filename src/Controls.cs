@@ -24,7 +24,8 @@ namespace OrbitCalendar
                 var parts = File.ReadAllLines(path);
                 int value;
                 if (parts.Length > 0 && int.TryParse(parts[0], out value) && value >= 0 && value < 4) Pattern = value;
-                if (parts.Length > 1 && int.TryParse(parts[1], out value) && value >= 0 && value < 7) Motion = value;
+                // Removed legacy effects migrate to attraction; retain its old ID.
+                if (parts.Length > 1 && int.TryParse(parts[1], out value) && value >= 6 && value <= 8) Motion = value;
                 if (parts.Length > 2 && int.TryParse(parts[2], out value) && value >= 1 && value <= 180) Minutes = value;
                 if (parts.Length > 3 && int.TryParse(parts[3], out value) && value >= 0 && value <= 4) LastTab = value;
                 if (parts.Length > 4 && int.TryParse(parts[4], out value) && value >= 0 && value < 6) LoadingStyle = value;
@@ -145,10 +146,10 @@ namespace OrbitCalendar
                 Preferences.Pattern = value;
                 PreviewSetting();
             });
-            FillChoices("MotionChoices", new[] { "自動", "球体", "渦巻き", "降り注ぐ", "爆発と収束", "ウェーブ", "吸い寄せ" },
-                Preferences.Motion, delegate(int value)
+            FillChoices("MotionChoices", new[] { "吸い寄せ", "流れ込み", "奥行き" },
+                Preferences.Motion - 6, delegate(int value)
             {
-                Preferences.Motion = value;
+                Preferences.Motion = value + 6;
                 PreviewSetting();
             });
             FillChoices("LoadingChoices", new[] { "6本バー", "円形スピナー", "軌道リング", "ドットキューブ", "タイル組み替え", "ドットウェーブ" }, Preferences.LoadingStyle, delegate(int value)
@@ -161,6 +162,7 @@ namespace OrbitCalendar
         bool showLoadingSettings;
         void UpdateSettingsSection()
         {
+            Get<Grid>("SettingsSection").Height = showLoadingSettings ? 256 : 180;
             Get<StackPanel>("TransitionSettings").Visibility = showLoadingSettings ? Visibility.Collapsed : Visibility.Visible;
             Get<StackPanel>("LoadingSettings").Visibility = showLoadingSettings ? Visibility.Visible : Visibility.Collapsed;
             Get<Button>("SettingsTransition").Background = Art.Ink(showLoadingSettings ? "#193B48" : "#287181");
