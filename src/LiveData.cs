@@ -82,6 +82,7 @@ namespace OrbitCalendar
             public bool HourlyRain;
             public DateTime ValidUtc, OriginUtc;
             public Viewport Viewport;
+            public RadarTime Radar;
             public double AccuracyPixels;
             public string LocationHint;
             public DateTime Fetched = DateTime.UtcNow;
@@ -266,19 +267,50 @@ namespace OrbitCalendar
             return map;
         }
 
+        public static async Task<View> MapPreview(View reference, Viewport viewport, CancellationToken token)
+        {
+            RadarTime time = reference == null ? null : reference.Radar;
+            if (time == null || DateTime.UtcNow - reference.OriginUtc > TimeSpan.FromMinutes(5))
+            {
+                var times = await FutureRainTimes(token).ConfigureAwait(false);
+                time = times.LastOrDefault(t => t.basetime == t.validtime) ?? times[0];
+            }
+            var view = await RadarMap(time, viewport.Name, viewport.Latitude, viewport.Longitude, viewport.Zoom, token, viewport.Marker).ConfigureAwait(false);
+            if (view == null) throw new InvalidDataException("地図を取得できませんでした");
+            view.Viewport = viewport; view.Frames = new[] { view };
+            return view;
+        }
+
         static async Task<View> RadarSequence(RadarTime[] times, string name, double latitude, double lon, int zoom, CancellationToken token, GeoCoordinate marker = null)
         {
-            var frames = new List<View>();
-            foreach (var time in times)
+            var observedTime = times.FirstOrDefault(t => t.basetime == t.validtime);
+            if (observedTime == null) return null;
+            // Fetch the observation first: it warms the base tiles, and an unavailable
+            // observation fails before queuing the forecast requests.
+            var observed = await RadarMap(observedTime, name, latitude, lon, zoom, token, marker).ConfigureAwait(false);
+            if (observed == null) return null;
+            observed.Viewport = new Viewport { Name = name, Latitude = latitude, Longitude = lon, Zoom = zoom, Marker = marker };
+            View[] rendered;
+            using (var slots = new SemaphoreSlim(3))
             {
-                token.ThrowIfCancellationRequested();
-                View frame = null;
-                try { frame = await RadarMap(time, name, latitude, lon, zoom, token, marker).ConfigureAwait(false); }
-                catch (HttpRequestException) { if (time.basetime == time.validtime) throw; }
-                catch (TaskCanceledException) { token.ThrowIfCancellationRequested(); if (time.basetime == time.validtime) throw; }
-                if (frame != null) frame.Viewport = new Viewport { Name = name, Latitude = latitude, Longitude = lon, Zoom = zoom, Marker = marker };
-                if (frame != null) frames.Add(frame);
+                var requests = times.Where(time => time != observedTime).Select(async time =>
+                {
+                    await slots.WaitAsync(token).ConfigureAwait(false);
+                    try
+                    {
+                        View frame = null;
+                        try { frame = await RadarMap(time, name, latitude, lon, zoom, token, marker).ConfigureAwait(false); }
+                        catch (HttpRequestException) { if (time.basetime == time.validtime) throw; }
+                        catch (TaskCanceledException) { token.ThrowIfCancellationRequested(); if (time.basetime == time.validtime) throw; }
+                        if (frame != null) frame.Viewport = new Viewport { Name = name, Latitude = latitude, Longitude = lon, Zoom = zoom, Marker = marker };
+                        return frame;
+                    }
+                    finally { slots.Release(); }
+                }).ToArray();
+                rendered = await Task.WhenAll(requests).ConfigureAwait(false);
             }
+            var frames = rendered.Where(frame => frame != null).ToList();
+            frames.Insert(0, observed);
             if (!frames.Any(frame => !frame.Forecast)) return null;
             var latest = frames.LastOrDefault(frame => !frame.Forecast) ?? frames[0];
             var timeline = frames.ToArray();
@@ -345,7 +377,7 @@ namespace OrbitCalendar
             map.Freeze();
             DateTime valid = RainUtc(time.validtime), stamp = valid.AddHours(9);
             bool hourly = time.Product == "rasrf";
-            return new View { Map = map, LocationPoint = position, AccuracyPixels = accuracyPixels, LocationHint = locationHint,
+            return new View { Radar = time, Map = map, LocationPoint = position, AccuracyPixels = accuracyPixels, LocationHint = locationHint,
                 Forecast = time.basetime != time.validtime, HourlyRain = hourly, ValidUtc = valid, OriginUtc = time.OriginUtc,
                 Heading = name + "の雨雲", Stamp = stamp.ToString("yyyy/MM/dd HH:mm") +
                     (time.basetime == time.validtime ? " 観測（日本時間）" : hourly ? " 予測・1時間降水量" : " 予測・降水強度"),

@@ -120,6 +120,9 @@ namespace OrbitCalendar
             var requestedViewport = mapViewport;
             var previousWeather = activeWeather;
             bool market = mode == 1;
+            bool quickMap = !market && selectingPlace && requestedViewport != null;
+            bool mapChange = !market && requestedViewport != null;
+            bool mapRequestSucceeded = false;
             var instrument = market ? SelectedMarket : null;
             Get<ScrollViewer>("MarketScroll").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
             Get<Button>("ManageMarkets").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
@@ -134,7 +137,8 @@ namespace OrbitCalendar
             Get<Canvas>("Plot").Width = market ? 414 : LiveData.MapWidth;
             SetVisible("MarketRange", market);
             SetVisible("DataSource", false);
-            Get<Grid>("RadarControls").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<Grid>("RadarControls").Visibility = market || quickMap ? Visibility.Collapsed : Visibility.Visible;
+            if (quickMap) SetVisible("TemperaturePlot", false);
             Get<TextBlock>("RadarRange").Visibility = Visibility.Visible;
             if (market) Get<TextBlock>("RadarRange").Visibility = Visibility.Collapsed;
             Get<Grid>("RainLegend").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
@@ -183,22 +187,23 @@ namespace OrbitCalendar
                 if (fetch)
                 {
                     stamp.Text = view == null ? "" : view.Stamp;
-                    BeginDataLoading(request);
+                    if (mapChange) BeginMapLoading(request); else BeginDataLoading(request);
                     refresh.IsEnabled = false;
                 }
                 UpdateLayout();
-                effect.Start(true);
+                if (mapChange) effect.StartQuick(PanelBounds(Get<Canvas>("Plot"))); else effect.Start(true);
                 if (fetch)
                 {
-                    view = market ? await LiveData.MarketPeriod(instrument, marketMonths, request.Token) : await LiveData.Weather(index, request.Token, requestedViewport);
+                    view = market ? await LiveData.MarketPeriod(instrument, marketMonths, request.Token) : quickMap ? await LiveData.MapPreview(previousWeather, requestedViewport, request.Token) : await LiveData.Weather(index, request.Token, requestedViewport);
                     if (request.IsCancellationRequested) return;
                     if (market) { marketSaved[MarketCacheKey(instrument)] = view; Watchlist.Confirm(instrument); }
                     else if (requestedViewport == null) saved[key] = view;
-                    if (!market) { weatherForecast = await TryForecast(request.Token, force); if (request.IsCancellationRequested) return; }
+                    if (!market && !quickMap) { weatherForecast = await TryForecast(request.Token, force); if (request.IsCancellationRequested) return; }
                     EndDataLoading(request);
                     ShowData(view);
+                    mapRequestSucceeded = true;
                     UpdateLayout();
-                    effect.Start(true);
+                    if (mapChange) effect.StartQuick(PanelBounds(Get<Canvas>("Plot"))); else effect.Start(true);
                 }
                 nextUpdate = view.Fetched.AddMinutes(5);
             }
@@ -218,7 +223,7 @@ namespace OrbitCalendar
                 stamp.Text = hasPrevious ? previous.Stamp + "  ·  更新失敗" : "取得失敗 · 配信対象外または通信エラー。更新で再試行";
                 if (!market && requestedViewport != null && previousWeather != null)
                 {
-                    mapViewport = previousWeather.Viewport;
+                    if (!quickMap) mapViewport = previousWeather.Viewport;
                     ShowData(previousWeather);
                     stamp.Text = previousWeather.Stamp + " · 範囲更新失敗";
                 }
@@ -236,9 +241,9 @@ namespace OrbitCalendar
                     {
                         var point = PlacePixel(activeWeather.Viewport, candidatePlace);
                         bool visible = point.X >= 0 && point.X <= LiveData.MapWidth && point.Y >= 0 && point.Y <= LiveData.MapHeight;
-                        Get<Button>("SavePlace").IsEnabled = visible;
+                        Get<Button>("SavePlace").IsEnabled = visible && (!quickMap || mapRequestSucceeded);
                         Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
-                        Get<TextBlock>("MapHint").Text = visible ? "ドラッグで移動・クリックで位置指定・ホイールで拡縮" : "候補は画面外です。地図をクリックして位置を指定してください";
+                        Get<TextBlock>("MapHint").Text = quickMap && !mapRequestSucceeded ? "地図を更新できませんでした。更新で再試行してください" : visible ? "ドラッグで移動・クリックで位置指定・ホイールで拡縮" : "候補は画面外です。地図をクリックして位置を指定してください";
                     }
                     if (mode != 0 && IsVisible)
                     {

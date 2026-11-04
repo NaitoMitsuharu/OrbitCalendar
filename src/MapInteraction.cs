@@ -11,7 +11,7 @@ namespace OrbitCalendar
     {
         LiveData.Viewport mapViewport;
         LiveData.View activeWeather;
-        readonly DispatcherTimer zoomWait = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        readonly DispatcherTimer zoomWait = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         Point? dragStart;
         DateTime lastMapDraw;
 
@@ -47,7 +47,7 @@ namespace OrbitCalendar
                 mapViewport = MoveMap(start, (at.X - LiveData.MapWidth / 2.0) * (1 - factor * newScale / oldScale),
                     (at.Y - LiveData.MapHeight / 2.0) * (1 - factor * newScale / oldScale), zoom);
                 nextUpdate = DateTime.MinValue;
-                saved.Remove(20 + choice[2]);
+                if (!selectingPlace) saved.Remove(20 + choice[2]);
                 if (!selectingPlace && !MapScale.Remember(choice[2], zoom))
                 {
                     Get<TextBlock>("MapHint").Text = "縮尺を保存できませんでした。次回の拡大縮小で再試行します";

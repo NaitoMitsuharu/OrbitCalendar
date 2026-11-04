@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -31,6 +31,13 @@ namespace OrbitCalendar
                 Text = "Orbit Calendar", ContextMenuStrip = menu, Visible = integrateDesktop };
             tray.MouseClick += delegate(object sender, Forms.MouseEventArgs e) { if (e.Button == Forms.MouseButtons.Left) Toggle(); };
             menu.Items.Add("ウィンドウを開く／閉じる", null, delegate { Toggle(); });
+            var startup = new Forms.ToolStripMenuItem("Windowsへのサインイン時に起動");
+            startup.Click += delegate
+            {
+                try { StartupRegistration.SetEnabled(!StartupRegistration.Enabled); startup.Checked = StartupRegistration.Enabled; }
+                catch (Exception ex) { if (!(ex is System.IO.IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)) throw; tray.ShowBalloonTip(4000, "Orbit Calendar", "自動起動を保存できませんでした。もう一度お試しください", Forms.ToolTipIcon.Warning); }
+            };
+            menu.Items.Add(startup); menu.Opening += delegate { startup.Checked = StartupRegistration.Enabled; };
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("Orbit Calendar を終了", null, delegate { Application.Current.Shutdown(); });
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)
@@ -140,12 +147,12 @@ namespace OrbitCalendar
     internal static class Program
     {
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             bool primary;
             using (var signal = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\OrbitCalendar.Open.4cf34b7f", out primary))
             {
-                if (!primary) { signal.Set(); return; }
+                if (!primary) { if (Array.IndexOf(args, "--autostart") < 0) signal.Set(); return; }
                 var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 using (var shell = new Shell())
                 {

@@ -19,7 +19,7 @@ namespace OrbitCalendar
         {
             InitializePlaceSearch();
             Get<Button>("PickPlace").Click += delegate { if (showDailyWeather) { showDailyWeather = false; SwitchView(2); } OpenPlaceSearch(); };
-            Get<Button>("CancelPlace").Click += delegate { CancelPlaceSelection(); effect.Refresh(); };
+            Get<Button>("CancelPlace").Click += delegate { bool restore = placeAdjustmentCaptured; CancelPlaceSelection(); if (restore && mode == 2 && IsVisible) LoadView(false); else effect.Refresh(); };
             Get<Button>("SavePlace").Click += delegate { AddCandidatePlace(); };
             var confirm = Get<Border>("PlaceConfirm");
             confirm.PreviewMouseDown += delegate { FinishMarketTransition(); };
@@ -53,7 +53,9 @@ namespace OrbitCalendar
             }
             try
             {
-                SavedPlace.Add(candidatePlace, name, activeWeather == null ? MapScale.ForRegion(0) : activeWeather.Viewport.Zoom);
+                int zoom = activeWeather == null ? MapScale.ForRegion(0) : activeWeather.Viewport.Zoom;
+                if (editingLocationId == null) SavedPlace.Add(candidatePlace, name, zoom);
+                else SavedPlace.UpdatePosition(editingLocationId, candidatePlace, zoom);
                 ReloadPlace();
             }
             catch (IOException) { PlaceSaveFailed(); }
@@ -66,7 +68,7 @@ namespace OrbitCalendar
             candidatePlaceName = Get<TextBox>("CandidatePlaceName").Text;
             UpdateCandidateSummary();
             confirm.Visibility = Visibility.Visible;
-            if (opening) AnimateEditorTransition(confirm, false);
+            if (opening) AnimateEditorTransition(confirm, false, true);
         }
 
         void UpdateCandidateSummary()
@@ -101,11 +103,14 @@ namespace OrbitCalendar
 
         void CancelPlaceSelection()
         {
+            bool restore = placeAdjustmentCaptured;
+            editingLocationId = null;
             CloseWeatherPlaces(false);
             ClosePlaceEditor(false);
             ClosePlaceSearch(false);
             dragStart = null; Get<Canvas>("Plot").ReleaseMouseCapture();
             selectingPlace = false;
+            if (restore) RestorePlaceAdjustment();
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             candidatePlace = null;
             candidatePlaceName = null;
@@ -113,9 +118,12 @@ namespace OrbitCalendar
             Get<Button>("PickPlace").Content = "＋ 地点";
             if (editorTransitionPicker == Get<Border>("PlaceConfirm")) FinishMarketTransition();
             Get<Border>("PlaceConfirm").Visibility = Visibility.Collapsed;
+            Get<TextBox>("CandidatePlaceName").IsReadOnly = false;
+            Get<TextBox>("CandidatePlaceName").ToolTip = "自宅・職場など、登録する名前を変更できます";
+            Get<Button>("SavePlace").Content = "この地点を追加";
             Get<TextBox>("CandidatePlaceName").Text = "";
             candidatePlaceName = null;
-            if (activeWeather != null && mode == 2)
+            if (!restore && activeWeather != null && mode == 2)
             {
                 var plot = Get<Canvas>("Plot");
                 plot.Children.Clear();

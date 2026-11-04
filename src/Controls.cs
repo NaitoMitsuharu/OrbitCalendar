@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -48,6 +48,7 @@ namespace OrbitCalendar
         void InitializeControls()
         {
             InitializeAnimationSpeed();
+            InitializeStartupControl();
             outside = new OutsideClick(delegate { if (IsVisible && !IsClosing) collapse(); });
             IsVisibleChanged += delegate { outside.Enabled = IsVisible; };
             Closed += delegate { outside.Dispose(); };
@@ -137,6 +138,7 @@ namespace OrbitCalendar
         void UpdateSettingChoices()
         {
             UpdateSpeedChoices();
+            UpdateStartupButton();
             FillChoices("PatternChoices", new[] { "ドット", "グリッド", "ストライプ", "きらめき" }, Preferences.Pattern, delegate(int value)
             {
                 Preferences.Pattern = value;

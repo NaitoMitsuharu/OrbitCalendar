@@ -154,7 +154,7 @@ namespace OrbitCalendar
 
         void BeginMapPlaceSelection()
         {
-            if (activeWeather == null) return;
+            CapturePlaceAdjustment();
             StopRadar(); selectingPlace = true; candidatePlace = null; candidatePlaceName = null;
             Get<TextBox>("CandidatePlaceName").Text = "地点" + (SavedPlace.Entries.Count + 1);
             Get<Canvas>("Plot").Cursor = Cursors.Cross; Get<Button>("PickPlace").Content = "＋ 地点";

@@ -46,7 +46,7 @@ namespace OrbitCalendar
             frame.Render(visual); frame.Freeze(); marketTransitionImage.Source = frame;
         }
         void AnimateMarketTransition(bool closing) { AnimateEditorTransition(Get<Border>("MarketPicker"), closing); }
-        void AnimateEditorTransition(Border picker, bool closing)
+        void AnimateEditorTransition(Border picker, bool closing, bool quick = false)
         {
             if (!IsVisible || picker.Visibility != Visibility.Visible || !SystemParameters.ClientAreaAnimation) { if (closing) picker.Visibility = Visibility.Collapsed; return; }
             FinishMarketTransition(); editorTransitionPicker = picker;
@@ -54,13 +54,13 @@ namespace OrbitCalendar
             marketTransitionImage.Width = picker.Width; marketTransitionImage.Height = picker.Height;
             CaptureMarketTransition();
             marketTransitionHost.Visibility = Visibility.Visible; picker.Opacity = 0; UpdateLayout();
-            marketTransition.Start(true);
+            if (quick) marketTransition.StartQuick(new Rect(picker.RenderSize)); else marketTransition.Start(true);
             if (closing)
             {
                 marketTransition.Stop(); marketTransition.Refresh(); picker.Visibility = Visibility.Collapsed;
                 marketTransition.Dismiss(delegate { marketTransitionHost.Visibility = Visibility.Collapsed; picker.Opacity = 1; });
             }
-            else { marketTransitionFinish.Interval = TimeSpan.FromSeconds(1.8 * Preferences.AnimationScale); marketTransitionFinish.Start(); }
+            else { marketTransitionFinish.Interval = TimeSpan.FromSeconds(quick ? .26 : 1.8 * Preferences.AnimationScale); marketTransitionFinish.Start(); }
         }
     }
 }

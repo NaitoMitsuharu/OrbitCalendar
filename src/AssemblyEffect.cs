@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows;
@@ -88,6 +88,8 @@ namespace OrbitCalendar
         public void Start(bool fromPrevious) { Start(fromPrevious, new Rect(face.RenderSize)); }
 
         public void StartArea(Rect area, bool restart = false) { Start(!restart, area); }
+
+        public void StartQuick(Rect area) { Start(true, area); timeScale = Math.Min(Preferences.AnimationScale, .14); }
 
         public void StartCalendarChange(Rect[] regions) { Start(true, new Rect(face.RenderSize), regions); }
 

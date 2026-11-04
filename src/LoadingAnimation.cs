@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
@@ -151,6 +151,7 @@ namespace OrbitCalendar
         readonly System.Diagnostics.Stopwatch previewLoadingClock = new System.Diagnostics.Stopwatch();
         ParticleLoading mainLoadingParticles, newsLoadingParticles, settingsLoadingParticles;
         CancellationTokenSource dataLoadingOwner;
+        bool mapLoading;
         void InitializeLoading()
         {
             mainLoadingParticles = new ParticleLoading(); Get<Grid>("LoadingArea").Children.Add(mainLoadingParticles);
@@ -170,7 +171,7 @@ namespace OrbitCalendar
                 if (mode < 1) return;
                 var dots = dataLoadingOwner != null ? mainLoadingParticles : mode == 3 && newsPreview != null ? newsLoadingParticles : null;
                 if (dots == null || !dots.IsVisible || !SystemParameters.ClientAreaAnimation) return;
-                dots.Phase = loadingClock.Elapsed.TotalSeconds; dots.InvalidateVisual();
+                dots.Phase = loadingClock.Elapsed.TotalSeconds * (mapLoading ? 2 : 1); dots.InvalidateVisual();
                 effect.RefreshArea(PanelBounds(dots));
             };
             IsVisibleChanged += delegate { if (IsVisible) loadingAnimation.Start(); else loadingAnimation.Stop(); };
@@ -183,6 +184,8 @@ namespace OrbitCalendar
         }
         void BeginDataLoading(CancellationTokenSource owner)
         {
+            mapLoading = false;
+            var area = Get<Grid>("LoadingArea"); area.Width = area.Height = double.NaN; area.HorizontalAlignment = HorizontalAlignment.Stretch; area.VerticalAlignment = VerticalAlignment.Stretch; area.Background = Art.Ink("#0B1923");
             dataLoadingOwner = owner;
             mainLoadingParticles.Restart(); loadingClock.Restart();
             var host = Get<Grid>("LoadingArea");
@@ -192,6 +195,14 @@ namespace OrbitCalendar
             host.Margin = new Thickness(14, Math.Max(0, choices.Bottom - rowTop + 2), 14, 14);
             host.Visibility = Visibility.Visible;
         }
+        void BeginMapLoading(CancellationTokenSource owner)
+        {
+            BeginDataLoading(owner); mapLoading = true;
+            var host = Get<Grid>("LoadingArea"); var plot = PanelBounds(Get<Canvas>("Plot"));
+            double rowTop = Get<Grid>("Face").RowDefinitions[0].ActualHeight;
+            host.Width = plot.Width; host.Height = plot.Height; host.HorizontalAlignment = HorizontalAlignment.Left; host.VerticalAlignment = VerticalAlignment.Top;
+            host.Margin = new Thickness(plot.Left, plot.Top - rowTop, 0, 0); host.Background = Art.Ink("#660B1923");
+        }
         void EndDataLoading(CancellationTokenSource owner)
         {
             if (dataLoadingOwner != owner) return;
@@ -199,6 +210,7 @@ namespace OrbitCalendar
         }
         void ClearDataLoading()
         {
+            mapLoading = false;
             dataLoadingOwner = null; Get<Grid>("LoadingArea").Visibility = Visibility.Collapsed;
         }
     }

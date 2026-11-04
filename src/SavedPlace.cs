@@ -137,6 +137,14 @@ namespace OrbitCalendar
             if (item == null || name == null) throw new ArgumentException();
             item.Name = name; Commit(next, ActiveId, (bool[])hidden.Clone());
         }
+        public static void UpdatePosition(string id, GeoCoordinate coordinate, int zoom)
+        {
+            if (coordinate == null || !Valid(coordinate.Latitude, coordinate.Longitude) || zoom < 4 || zoom > 18) throw new ArgumentException();
+            var next = Copy(); var item = next.FirstOrDefault(p => p.Id == id);
+            if (item == null) throw new ArgumentException();
+            item.Latitude = coordinate.Latitude; item.Longitude = coordinate.Longitude; item.Zoom = zoom;
+            Commit(next, ActiveId, (bool[])hidden.Clone());
+        }
         public static bool Move(string id, int direction)
         {
             var next = Copy(); int index = next.FindIndex(p => p.Id == id), destination = index + direction;

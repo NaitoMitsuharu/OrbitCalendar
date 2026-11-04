@@ -108,6 +108,7 @@ namespace OrbitCalendar
                 var up = PlaceRowButton("↑", "up:" + id, delegate { MoveWeatherPlace(id, -1); }); up.IsEnabled = index > 0; up.ToolTip = "上へ移動";
                 var down = PlaceRowButton("↓", "down:" + id, delegate { MoveWeatherPlace(id, 1); }); down.IsEnabled = index < SavedPlace.Entries.Count - 1; down.ToolTip = "下へ移動";
                 actions.Children.Add(up); actions.Children.Add(down);
+                actions.Children.Add(PlaceRowButton("位置", "position:" + id, delegate { OpenSavedLocationEditor(id); }));
                 actions.Children.Add(PlaceRowButton("名前", "rename:" + id, delegate { CloseWeatherPlaces(false); OpenPlaceEditor(id); }));
                 actions.Children.Add(PlaceRowButton(removingPlace == id ? "削除する" : "削除", "delete:" + id, delegate
                 {
