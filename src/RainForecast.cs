@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -48,7 +48,7 @@ namespace OrbitCalendar
             bool hourly = time.Product == "rasrf";
             // Short-range forecast tiles use even zoom levels. Crop and scale the
             // parent tile at odd levels, preserving alignment with the base map.
-            int nativeZoom = hourly ? Math.Min(10, zoom - zoom % 2) : zoom;
+            int nativeZoom = hourly ? Math.Min(10, zoom - zoom % 2) : Math.Min(10, zoom);
             int factor = 1 << (zoom - nativeZoom);
             string product = hourly ? "rasrf" : "nowc", element = hourly ? "rasrf" : "hrpns";
             string member = string.IsNullOrEmpty(time.member) ? "none" : Uri.EscapeDataString(time.member);

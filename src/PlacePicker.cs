@@ -22,7 +22,7 @@ namespace OrbitCalendar
             Get<Button>("CancelPlace").Click += delegate { CancelPlaceSelection(); effect.Refresh(); };
             Get<Button>("SavePlace").Click += delegate
             {
-                if (candidatePlace == null || !Get<Button>("SavePlace").IsEnabled) return;
+                if (candidatePlace == null || loading != null || zoomWait.IsEnabled || dragStart.HasValue || !Get<Button>("SavePlace").IsEnabled) return;
                 try
                 {
                     SavedPlace.Add(candidatePlace, candidatePlaceName, activeWeather == null ? MapScale.ForRegion(0) : activeWeather.Viewport.Zoom);
@@ -69,6 +69,7 @@ namespace OrbitCalendar
             CloseWeatherPlaces(false);
             ClosePlaceEditor(false);
             ClosePlaceSearch(false);
+            dragStart = null; Get<Canvas>("Plot").ReleaseMouseCapture();
             selectingPlace = false;
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             candidatePlace = null;
@@ -119,9 +120,11 @@ namespace OrbitCalendar
                 return;
             }
             candidatePlace = new GeoCoordinate(latitude, longitude);
+            Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
+            Get<TextBlock>("MapHint").Text = "ドラッグで移動・クリックで位置指定・ホイールで拡縮";
             Get<Button>("SavePlace").IsEnabled = true;
             Get<TextBlock>("PlaceSummary").Text = (string.IsNullOrEmpty(candidatePlaceName) ? "" : candidatePlaceName + "（地図で調整）\n") + latitude.ToString("F4", CultureInfo.InvariantCulture) + "°, " +
-                longitude.ToString("F4", CultureInfo.InvariantCulture) + "°\n雨雲と今日の天気の基準地点にします";
+                longitude.ToString("F4", CultureInfo.InvariantCulture) + "°";
             Get<Border>("PlaceConfirm").Visibility = Visibility.Visible;
             var plot = Get<Canvas>("Plot");
             plot.Children.Clear(); DrawRadar(activeWeather);

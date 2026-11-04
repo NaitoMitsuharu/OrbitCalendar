@@ -33,7 +33,7 @@ $place.GetMethod('Save',$sf).Invoke($null,[object[]]@([Device.Location.GeoCoordi
 function Zoom([int]$index){return $mapScale.GetMethod('ForRegion',$sf).Invoke($null,[object[]]@($index))}
 function Remember([int]$index,[int]$zoom){return $mapScale.GetMethod('Remember',$sf).Invoke($null,[object[]]@($index,$zoom))}
 Assert ((Zoom 0) -eq 9 -and (Zoom 1) -eq 4 -and (Zoom 2) -eq 7 -and (Zoom 3) -eq 7) 'Default zooms changed'
-Assert (-not (Remember 0 11) -and -not (Remember -1 7)) 'Invalid zoom/region accepted'
+Assert (-not (Remember 0 19) -and -not (Remember -1 7)) 'Invalid zoom/region accepted'
 [IO.File]::WriteAllLines((Join-Path $folder 'map-zoom.txt'),@('99','5','bad','6'));$mapScale.GetMethod('Load',$sf).Invoke($null,@())|Out-Null
 Assert ((Zoom 0) -eq 9 -and (Zoom 1) -eq 5 -and (Zoom 2) -eq 7 -and (Zoom 3) -eq 6) 'Invalid zoom recovery failed'
 $mapScale.GetField('path',$sf).SetValue($null,$folder);Assert (-not (Remember 2 8) -and (Zoom 0) -eq 9) 'Failed zoom save changed durable preference';$mapScale.GetField('path',$sf).SetValue($null,(Join-Path $folder 'map-zoom.txt'))

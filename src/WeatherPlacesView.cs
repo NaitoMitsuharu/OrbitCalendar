@@ -104,6 +104,10 @@ namespace OrbitCalendar
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 5, 0) }; Grid.SetColumn(actions, 1); row.Children.Add(actions);
                 var select = PlaceRowButton(SavedPlace.ActiveId == id ? "選択中" : "選択", "select:" + id, delegate { ChooseSavedPlace(id); });
                 select.IsEnabled = SavedPlace.ActiveId != id; actions.Children.Add(select);
+                int index = SavedPlace.Entries.IndexOf(place);
+                var up = PlaceRowButton("↑", "up:" + id, delegate { MoveWeatherPlace(id, -1); }); up.IsEnabled = index > 0; up.ToolTip = "上へ移動";
+                var down = PlaceRowButton("↓", "down:" + id, delegate { MoveWeatherPlace(id, 1); }); down.IsEnabled = index < SavedPlace.Entries.Count - 1; down.ToolTip = "下へ移動";
+                actions.Children.Add(up); actions.Children.Add(down);
                 actions.Children.Add(PlaceRowButton("名前", "rename:" + id, delegate { CloseWeatherPlaces(false); OpenPlaceEditor(id); }));
                 actions.Children.Add(PlaceRowButton(removingPlace == id ? "削除する" : "削除", "delete:" + id, delegate
                 {
@@ -138,9 +142,18 @@ namespace OrbitCalendar
                 ranges.Children.Add(button);
             }
         }
+        void MoveWeatherPlace(string id, int direction)
+        {
+            WeatherPlaceAction(delegate
+            {
+                if (!SavedPlace.Move(id, direction)) return;
+                removingPlace = null; RebuildWeatherChoices(); DrawWeatherPlaces();
+                AnimateEditorTransition(Get<Border>("WeatherPlacesPicker"), false);
+            });
+        }
         Button PlaceRowButton(string text, string tag, Action action)
         {
-            var button = new Button { Content = text, Tag = tag, FontSize = 11, Padding = new Thickness(5, 4, 5, 4), MinWidth = 34 };
+            var button = new Button { Content = text, Tag = tag, FontSize = (text == "↑" || text == "↓") ? 14 : 11, Padding = new Thickness(5, 4, 5, 4), MinWidth = (text == "↑" || text == "↓") ? 23 : 34 };
             button.Click += delegate { action(); }; return button;
         }
     }

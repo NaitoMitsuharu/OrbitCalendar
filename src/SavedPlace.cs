@@ -54,7 +54,7 @@ namespace OrbitCalendar
                     {
                         if (item == null || string.IsNullOrEmpty(item.Id) || entries.Any(e => e.Id == item.Id) || !Valid(item.Latitude, item.Longitude)) continue;
                         item.Name = CleanName(item.Name) ?? "保存地点";
-                        if (item.Zoom < 4 || item.Zoom > 10) item.Zoom = 9;
+                        if (item.Zoom < 4 || item.Zoom > 18) item.Zoom = 9;
                         entries.Add(item);
                     }
                     if (state.Hidden != null) Array.Copy(state.Hidden, hidden, Math.Min(4, state.Hidden.Length));
@@ -120,7 +120,7 @@ namespace OrbitCalendar
         }
         public static void Add(GeoCoordinate coordinate, string name, int zoom)
         {
-            if (coordinate == null || !Valid(coordinate.Latitude, coordinate.Longitude) || zoom < 4 || zoom > 10) throw new ArgumentException();
+            if (coordinate == null || !Valid(coordinate.Latitude, coordinate.Longitude) || zoom < 4 || zoom > 18) throw new ArgumentException();
             var next = Copy(); string id = Guid.NewGuid().ToString("N");
             next.Add(new Entry { Id = id, Name = CleanName(name) ?? "地点" + (next.Count + 1), Latitude = coordinate.Latitude, Longitude = coordinate.Longitude, Zoom = zoom });
             Commit(next, id, (bool[])hidden.Clone());
@@ -136,6 +136,13 @@ namespace OrbitCalendar
             var next = Copy(); var item = next.FirstOrDefault(p => p.Id == id); name = CleanName(name);
             if (item == null || name == null) throw new ArgumentException();
             item.Name = name; Commit(next, ActiveId, (bool[])hidden.Clone());
+        }
+        public static bool Move(string id, int direction)
+        {
+            var next = Copy(); int index = next.FindIndex(p => p.Id == id), destination = index + direction;
+            if ((direction != -1 && direction != 1) || index < 0 || destination < 0 || destination >= next.Count) return false;
+            var item = next[index]; next.RemoveAt(index); next.Insert(destination, item);
+            Commit(next, ActiveId, (bool[])hidden.Clone(), false); return true;
         }
         public static void Remove(string id)
         {
@@ -153,7 +160,7 @@ namespace OrbitCalendar
         }
         public static bool UpdateZoom(int zoom)
         {
-            if (Active == null || zoom < 4 || zoom > 10) return false;
+            if (Active == null || zoom < 4 || zoom > 18) return false;
             if (Active.Zoom == zoom) return true;
             var next = Copy(); next.First(p => p.Id == ActiveId).Zoom = zoom;
             Commit(next, ActiveId, (bool[])hidden.Clone(), false); return true;

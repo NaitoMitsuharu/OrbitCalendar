@@ -143,7 +143,7 @@
       <Grid Name="LoadingArea" Grid.Row="1" Margin="20,153,20,24" Background="#0B1923" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.Name="データを読み込んでいます"/>
         <Border Name="PlaceConfirm" Grid.RowSpan="2" Width="400" HorizontalAlignment="Center" VerticalAlignment="Bottom" Background="#102835" Padding="7" BorderThickness="1" BorderBrush="#528793" CornerRadius="6" Margin="0,0,0,51" Visibility="Collapsed">
           <StackPanel>
-            <TextBlock Name="PlaceSummary" Foreground="#B8E9E4" FontSize="12" TextWrapping="Wrap" MaxHeight="48" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+            <TextBlock Name="PlaceSummary" Foreground="#B8E9E4" FontSize="12" TextWrapping="NoWrap" MaxHeight="32" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
             <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
               <Button Name="SavePlace" Content="この地点を追加" Background="#287181"/>
               <Button Name="CancelPlace" Content="取消" Margin="8,0,0,0"/>
@@ -220,16 +220,17 @@
     </Border>
     <Border Name="PlaceSearchPicker" Width="422" Height="444" VerticalAlignment="Bottom" Margin="0,0,0,48" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="14" Visibility="Collapsed">
       <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="40"/><RowDefinition Height="30"/><RowDefinition Height="*"/><RowDefinition Height="30"/><RowDefinition Height="40"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="40"/><RowDefinition Height="27"/><RowDefinition Height="28"/><RowDefinition Height="*"/><RowDefinition Height="30"/><RowDefinition Height="40"/></Grid.RowDefinitions>
         <Grid><TextBlock Text="基準地点を探す" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="RenamePlace" Content="名前変更" Margin="0,0,8,0" Background="#193B48"/><Button Name="ClosePlaceSearch" Content="×" Width="28" AutomationProperties.Name="地点検索を閉じる"/></StackPanel></Grid>
         <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions>
-          <TextBox Name="PlaceQuery" FontSize="14" Padding="8,5" VerticalContentAlignment="Center" Foreground="#E3F4F4" Background="#0B1923" BorderBrush="#528793" BorderThickness="1" CaretBrush="#8FE4DD" SelectionBrush="#287181" AutomationProperties.Name="駅名・地名・住所で地点を検索"/>
+          <TextBox Name="PlaceQuery" FontSize="14" Padding="8,5" VerticalContentAlignment="Center" Foreground="#E3F4F4" Background="#0B1923" BorderBrush="#528793" BorderThickness="1" CaretBrush="#8FE4DD" SelectionBrush="#287181" AutomationProperties.Name="駅名・建物名・地名・住所で地点を検索"/>
           <Button Name="SearchPlace" Grid.Column="1" Content="検索" Margin="6,0,0,0" Background="#287181"/>
         </Grid>
         <TextBlock Name="PlaceSearchMessage" Grid.Row="2" FontSize="11" Foreground="#92B5BE" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-        <Grid Grid.Row="3"><StackPanel Name="PlaceResults"/><Grid Name="PlaceSearchLoading" Visibility="Collapsed" IsHitTestVisible="False"/></Grid>
-        <Grid Grid.Row="4"><Button Name="PickOnMap" Content="地図で指定 →" HorizontalAlignment="Left"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="PlacePrevious" Content="‹" Width="26" FontSize="18"/><TextBlock Name="PlacePage" MinWidth="44" TextAlignment="Center" FontSize="11" VerticalAlignment="Center"/><Button Name="PlaceNext" Content="›" Width="26" FontSize="18"/></StackPanel></Grid>
-        <TextBlock Grid.Row="5" Text="検索語は国土地理院へ送信します。候補の代表点を地図で確認してから保存できます。" Foreground="#92B5BE" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0"/>
+        <UniformGrid Name="PlaceSearchFilters" Grid.Row="3" Columns="4"/>
+        <Grid Grid.Row="4"><StackPanel Name="PlaceResults"/><Grid Name="PlaceSearchLoading" Visibility="Collapsed" IsHitTestVisible="False"/></Grid>
+        <Grid Grid.Row="5"><Button Name="PickOnMap" Content="地図で指定 →" HorizontalAlignment="Left"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="PlacePrevious" Content="‹" Width="26" FontSize="18"/><TextBlock Name="PlacePage" MinWidth="44" TextAlignment="Center" FontSize="11" VerticalAlignment="Center"/><Button Name="PlaceNext" Content="›" Width="26" FontSize="18"/></StackPanel></Grid>
+        <TextBlock Grid.Row="6" Text="入力中、検索語を国土地理院・Photonへ送信します。候補の代表点は地図で調整できます。" Foreground="#92B5BE" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0"/>
       </Grid>
     </Border>
     <Border Name="PlaceEditPicker" Width="422" Height="224" VerticalAlignment="Bottom" Margin="0,0,0,48" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="16" Visibility="Collapsed">

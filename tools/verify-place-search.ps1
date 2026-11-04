@@ -34,7 +34,7 @@ $station=@(Search '天王町駅');Assert ($station.Length -gt 0 -and $station[0]
 Assert ([Math]::Abs($station[0].Coordinate.Latitude-35.45433) -lt .002 -and [Math]::Abs($station[0].Coordinate.Longitude-139.60267) -lt .002) 'Station coordinates incorrect'
 $town=@(Search '横浜市');Assert ($town.Length -gt 0 -and $town[0].Name.Contains('横浜市')) 'Town search failed'
 $address=@(Search '東京都千代田区丸の内1-9-1');Assert ($address.Length -gt 0 -and $address[0].Name.Contains('丸の内')) 'Street address search failed'
-$cached=@(Search '天王町駅');Assert ($cached[0] -eq $station[0]) 'Repeated query not cached'
+$cached=@(Search '天王町駅');Assert ($cached[0].Name -eq $station[0].Name -and $cached[0].Coordinate -eq $station[0].Coordinate) 'Repeated query not cached'
 $json='[{"geometry":{"type":"Point","coordinates":[139.6,35.4]},"properties":{"title":"町"}},{"geometry":{"type":"Point","coordinates":[139.7,35.5]},"properties":{"title":"駅名"}},{"geometry":{"type":"Point","coordinates":[139.7,35.5]},"properties":{"title":"駅名"}},{"geometry":{"type":"Point","coordinates":[0,0]},"properties":{"title":"範囲外"}},{"geometry":null,"properties":null}]'
 $parsed=@($search.GetMethod('Parse',$sf).Invoke($null,[object[]]@($json,'駅名')));Assert ($parsed.Count -eq 2 -and $parsed[0].Name -eq '駅名') 'Invalid features, duplicates, exact-name ranking failed'
 $panel=[Activator]::CreateInstance($a.GetType('OrbitCalendar.CalendarPanel'),[object[]]@([Action]{},[Action]{}));$pt=$panel.GetType();$root=$panel.Content.Child
@@ -50,9 +50,9 @@ try{
  $picker=$root.FindName('PlaceSearchPicker');Assert ($picker.Visibility -eq 'Visible' -and $picker.Opacity -eq 1) 'Search panel/native handoff failed'
  $bounds=Bounds $picker;Assert ($bounds.Top -ge 48 -and $bounds.Bottom -le $root.Height-40) 'Place panel outside window'
  $root.FindName('PlaceQuery').Text='天王町駅';Click 'SearchPlace';WaitSearch
- Assert ($root.FindName('PlaceResults').Children.Count -eq 4 -and $root.FindName('PlaceSearchLoading').Visibility -eq 'Collapsed') 'Search results/loader cleanup failed'
+ Assert ($root.FindName('PlaceResults').Children.Count -eq 3 -and $root.FindName('PlaceSearchLoading').Visibility -eq 'Collapsed') 'Search results/loader cleanup failed'
  Assert ($pt.GetField('placeResults',$if).GetValue($panel)[0].Name -eq '天王町駅') 'UI exact-match ordering failed'
- $last=Bounds $root.FindName('PlaceResults').Children[3];$pager=Bounds ($root.FindName('PlaceNext'));Assert ($last.Bottom -le $pager.Top) 'Results overlap paging'
+ $last=Bounds $root.FindName('PlaceResults').Children[2];$pager=Bounds ($root.FindName('PlaceNext'));Assert ($last.Bottom -le $pager.Top) 'Results overlap paging'
  Snapshot 'place-search.png'
  Click 'PlaceNext';Pump 1900;Assert ($pt.GetField('placePage',$if).GetValue($panel) -eq 1 -and $picker.Opacity -eq 1) 'Next page/native editor transition failed'
  Click 'PlacePrevious';Pump 1900

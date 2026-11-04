@@ -38,8 +38,9 @@ namespace OrbitCalendar
                 e.Handled = true;
                 StopRadar();
                 var start = mapViewport ?? activeWeather.Viewport;
-                int zoom = Math.Max(4, Math.Min(10, start.Zoom + Math.Sign(e.Delta)));
+                int zoom = Math.Max(4, Math.Min(18, start.Zoom + Math.Sign(e.Delta)));
                 if (zoom == start.Zoom) return;
+                if (selectingPlace) Get<Button>("SavePlace").IsEnabled = false;
                 Point at = e.GetPosition(plot);
                 double oldScale = start.Zoom == 4 ? .76 : .88, newScale = zoom == 4 ? .76 : .88;
                 double factor = Math.Pow(2, zoom - start.Zoom);
@@ -58,7 +59,6 @@ namespace OrbitCalendar
             plot.MouseLeftButtonDown += delegate(object sender, MouseButtonEventArgs e)
             {
                 if (mode != 2 || activeWeather == null || loading != null || zoomWait.IsEnabled || effect.Busy) return;
-                if (selectingPlace) { SelectPlaceAt(e.GetPosition(plot)); e.Handled = true; return; }
                 StopRadar(); dragStart = e.GetPosition(plot); plot.CaptureMouse(); e.Handled = true;
             };
             plot.MouseMove += delegate(object sender, MouseEventArgs e)
@@ -72,15 +72,8 @@ namespace OrbitCalendar
             plot.MouseLeftButtonUp += delegate(object sender, MouseButtonEventArgs e)
             {
                 if (!dragStart.HasValue) return;
-                var delta = e.GetPosition(plot) - dragStart.Value;
-                dragStart = null; plot.ReleaseMouseCapture(); e.Handled = true;
-                foreach (UIElement child in plot.Children) child.RenderTransform = Transform.Identity;
-                if (delta.Length > 3)
-                {
-                    mapViewport = MoveMap(activeWeather.Viewport, delta.X, delta.Y, activeWeather.Viewport.Zoom);
-                    LoadView(true);
-                }
-                else effect.Refresh();
+                var at = e.GetPosition(plot);
+                CompleteMapDrag(at - dragStart.Value, at); e.Handled = true;
             };
             plot.LostMouseCapture += delegate
             {
@@ -90,6 +83,20 @@ namespace OrbitCalendar
                 effect.Refresh();
             };
             IsVisibleChanged += delegate { if (!IsVisible) { zoomWait.Stop(); plot.ReleaseMouseCapture(); } };
+        }
+        void CompleteMapDrag(Vector delta, Point at)
+        {
+            var plot = Get<Canvas>("Plot"); dragStart = null; plot.ReleaseMouseCapture();
+            foreach (UIElement child in plot.Children) child.RenderTransform = Transform.Identity;
+            if (activeWeather == null) return;
+            if (delta.Length > 4)
+            {
+                if (selectingPlace) Get<Button>("SavePlace").IsEnabled = false;
+                mapViewport = MoveMap(activeWeather.Viewport, delta.X, delta.Y, activeWeather.Viewport.Zoom);
+                LoadView(true);
+            }
+            else if (selectingPlace) SelectPlaceAt(at);
+            else effect.Refresh();
         }
     }
 }
