@@ -148,7 +148,7 @@
               Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="13" Visibility="Collapsed">
         <StackPanel>
           <Grid Margin="3,0,3,7">
-            <StackPanel Orientation="Horizontal"><TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="SettingsMarkets" Content="銘柄の管理 →" Margin="14,0,0,0" Background="#193B48"/><Button Name="StartupToggle" Content="自動起動 OFF" FontSize="11" Padding="6,3" Margin="8,0,0,0" Background="#193B48"/></StackPanel>
+            <StackPanel Orientation="Horizontal"><TextBlock Text="粒子の設定" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="SettingsMarkets" Content="銘柄の管理 →" Margin="14,0,0,0" Background="#193B48"/><Button Name="StartupToggle" Content="自動起動 OFF" FontSize="11" Padding="6,3" Margin="8,0,0,0" Background="#193B48"/><Button Name="UpdateButton" Content="更新" FontSize="11" Padding="6,3" Margin="6,0,0,0" Background="#193B48" ToolTip="アプリの更新"/></StackPanel>
             <Button Name="CloseSettingsPicker" AutomationProperties.Name="設定を閉じる" Content="×" Width="28" Height="28" HorizontalAlignment="Right"/>
           </Grid>
           <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
@@ -263,6 +263,18 @@
         <TextBlock Grid.Row="3" Text="表示する既存のタブ" Foreground="#92B5BE" FontSize="12" VerticalAlignment="Center"/>
         <UniformGrid Name="WeatherPresetChoices" Grid.Row="4" Columns="2"/>
         <Button Name="AddWeatherPlace" Grid.Row="5" Content="＋ 地点を追加" Background="#287181" HorizontalAlignment="Right" Padding="12,4" Margin="0,5,0,0"/>
+      </Grid>
+    </Border>
+    <Border Name="UpdatePicker" Width="422" Height="354" VerticalAlignment="Bottom" Margin="0,0,0,48" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="18" Visibility="Collapsed">
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="28"/><RowDefinition Height="42"/><RowDefinition Height="*"/><RowDefinition Height="36"/><RowDefinition Height="38"/><RowDefinition Height="28"/></Grid.RowDefinitions>
+        <Grid><TextBlock Text="アプリの更新" FontSize="17" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="CloseUpdatePicker" Content="×" Width="28" Height="28" HorizontalAlignment="Right" AutomationProperties.Name="更新画面を閉じる"/></Grid>
+        <TextBlock Name="UpdateCurrent" Grid.Row="1" FontSize="12" Foreground="#92B5BE" VerticalAlignment="Center"/>
+        <TextBlock Name="UpdateStatus" Grid.Row="2" FontSize="14" Foreground="#8FE4DD" TextWrapping="Wrap" VerticalAlignment="Center"/>
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,6"><TextBlock Name="UpdateNotes" FontSize="12" Foreground="#C0D9DE" TextWrapping="Wrap"/></ScrollViewer>
+        <Grid Grid.Row="4" Margin="0,0,0,8"><Border Name="UpdateProgressTrack" Width="350" Height="3" Background="#254653" HorizontalAlignment="Left" VerticalAlignment="Center" Visibility="Collapsed"><Border Name="UpdateProgressFill" Width="0" HorizontalAlignment="Left" Background="#7BE5DA"/></Border><TextBlock Name="UpdateProgressText" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Foreground="#92B5BE"/></Grid>
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="CheckUpdate" Content="更新を確認" Background="#193B48" Margin="0,0,8,0" Padding="10,7"/><Button Name="InstallUpdate" Content="更新して再起動" Background="#287181" Padding="12,7" IsEnabled="False"/></StackPanel>
+        <TextBlock Grid.Row="6" Text="登録地点・設定・自動起動の設定は保持されます" FontSize="11" Foreground="#92B5BE" VerticalAlignment="Bottom"/>
       </Grid>
     </Border>
   </Grid>

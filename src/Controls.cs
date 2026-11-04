@@ -49,6 +49,7 @@ namespace OrbitCalendar
         {
             InitializeAnimationSpeed();
             InitializeStartupControl();
+            InitializeUpdates();
             outside = new OutsideClick(delegate { if (IsVisible && !IsClosing) collapse(); });
             IsVisibleChanged += delegate { outside.Enabled = IsVisible; };
             Closed += delegate { outside.Dispose(); };

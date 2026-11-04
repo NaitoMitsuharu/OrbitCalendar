@@ -60,7 +60,7 @@ namespace OrbitCalendar
             InitializeControls();
             PreviewMouseWheel += delegate(object sender, MouseWheelEventArgs e)
             {
-                if (mode != 0 || IsClosing || Get<Border>("MarketPicker").Visibility == Visibility.Visible || Get<Border>("SettingsPicker").Visibility == Visibility.Visible) return;
+                if (mode != 0 || IsClosing || Get<Border>("UpdatePicker").Visibility == Visibility.Visible || Get<Border>("MarketPicker").Visibility == Visibility.Visible || Get<Border>("SettingsPicker").Visibility == Visibility.Visible) return;
                 wheelDelta += e.Delta;
                 int months = wheelDelta / 120;
                 wheelDelta %= 120;
@@ -79,7 +79,12 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (Get<Border>("WeatherPlacesPicker").Visibility == Visibility.Visible)
+            if (Get<Border>("UpdatePicker").Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape) CloseUpdates(true);
+                else return;
+            }
+            else if (Get<Border>("WeatherPlacesPicker").Visibility == Visibility.Visible)
             {
                 if (e.Key == Key.Escape) CloseWeatherPlaces(true);
                 else return;

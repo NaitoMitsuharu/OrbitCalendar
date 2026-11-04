@@ -38,6 +38,7 @@ namespace OrbitCalendar
                 catch (Exception ex) { if (!(ex is System.IO.IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)) throw; tray.ShowBalloonTip(4000, "Orbit Calendar", "自動起動を保存できませんでした。もう一度お試しください", Forms.ToolTipIcon.Warning); }
             };
             menu.Items.Add(startup); menu.Opening += delegate { startup.Checked = StartupRegistration.Enabled; };
+            menu.Items.Add("アプリの更新…", null, delegate { Open(); panel.OpenUpdates(); });
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("Orbit Calendar を終了", null, delegate { Application.Current.Shutdown(); });
             panel.Closing += delegate(object sender, System.ComponentModel.CancelEventArgs e)
@@ -84,6 +85,7 @@ namespace OrbitCalendar
         }
 
         public void Open() { countdown.Hide(); panel.Open(); Update(); }
+        internal void ShowUpdateResult(UpdateInstaller.Result result) { Open(); panel.ShowUpdateResult(result); }
         void Collapse() { panel.Collapse(); }
         void Toggle() { if (panel.IsVisible && !panel.IsClosing) Collapse(); else Open(); }
 
@@ -149,6 +151,8 @@ namespace OrbitCalendar
         [STAThread]
         static void Main(string[] args)
         {
+            string plan = UpdateInstaller.Argument(args, "--apply-update");
+            if (plan != null) { Environment.ExitCode = UpdateInstaller.Run(plan); return; }
             bool primary;
             using (var signal = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\OrbitCalendar.Open.4cf34b7f", out primary))
             {
@@ -156,6 +160,16 @@ namespace OrbitCalendar
                 var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 using (var shell = new Shell())
                 {
+                    app.Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        string resultPath = UpdateInstaller.Argument(args, "--after-update");
+                        if (resultPath != null)
+                        {
+                            var result = UpdateInstaller.ReadResult(resultPath);
+                            if (result != null) shell.ShowUpdateResult(result);
+                        }
+                        UpdateInstaller.Acknowledge(UpdateInstaller.Argument(args, "--update-health"));
+                    }), DispatcherPriority.ApplicationIdle);
                     var waiter = ThreadPool.RegisterWaitForSingleObject(signal, delegate
                     { app.Dispatcher.BeginInvoke(new Action(shell.Open)); }, null, Timeout.Infinite, false);
                     try { app.Run(); }

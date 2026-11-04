@@ -103,6 +103,7 @@ namespace OrbitCalendar
 
         void CancelPlaceSelection()
         {
+            CloseUpdates(false);
             bool restore = placeAdjustmentCaptured;
             editingLocationId = null;
             CloseWeatherPlaces(false);
