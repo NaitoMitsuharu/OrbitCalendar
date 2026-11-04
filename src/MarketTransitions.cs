@@ -16,6 +16,7 @@ namespace OrbitCalendar
         readonly DispatcherTimer marketTransitionFinish = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.8) };
         void InitializeMarketTransitions()
         {
+            InitializeParticleMenus();
             var picker = Get<Border>("MarketPicker");
             marketTransitionHost = new Grid { Width = picker.Width, Height = picker.Height, VerticalAlignment = VerticalAlignment.Bottom, Margin = picker.Margin, Visibility = Visibility.Collapsed, IsHitTestVisible = false };
             var background = new Border { Background = Art.Ink("#102835"), CornerRadius = new CornerRadius(10) }; marketTransitionHost.Children.Add(background);
@@ -39,11 +40,19 @@ namespace OrbitCalendar
         void CaptureMarketTransition()
         {
             var picker = editorTransitionPicker; picker.Opacity = 1; UpdateLayout();
-            int width = (int)picker.ActualWidth, height = (int)picker.ActualHeight;
-            var frame = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-            var visual = new DrawingVisual();
-            using (var drawing = visual.RenderOpen()) drawing.DrawRectangle(new VisualBrush(picker) { Stretch = Stretch.Fill }, null, new Rect(0, 0, width, height));
-            frame.Render(visual); frame.Freeze(); marketTransitionImage.Source = frame;
+            var settledEffect = picker.Effect;
+            picker.Effect = null;
+            try
+            {
+                // The gathering effect adds its own grains; capture the clean
+                // controls to avoid applying the settled pattern a second time.
+                int width = (int)picker.ActualWidth, height = (int)picker.ActualHeight;
+                var frame = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+                var visual = new DrawingVisual();
+                using (var drawing = visual.RenderOpen()) drawing.DrawRectangle(new VisualBrush(picker) { Stretch = Stretch.Fill }, null, new Rect(0, 0, width, height));
+                frame.Render(visual); frame.Freeze(); marketTransitionImage.Source = frame;
+            }
+            finally { picker.Effect = settledEffect; }
         }
         void AnimateMarketTransition(bool closing) { AnimateEditorTransition(Get<Border>("MarketPicker"), closing); }
         void AnimateEditorTransition(Border picker, bool closing, bool quick = false)

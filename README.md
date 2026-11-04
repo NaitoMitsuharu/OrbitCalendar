@@ -38,6 +38,10 @@ Windowsのタスクバー内の日時から開く、粒子でできたカレン�
 
 銘柄管理・検索画面の開閉、登録済み／検索の切り替え、分類・ページ移動も粒子で表示します。入力やクリックを始めたらアニメーションを終えて操作に移るため、検索欄のカーソルや文字入力はそのまま使えます。
 
+地点の管理・検索・名前変更・位置編集の確認欄、銘柄管理、アプリ更新の画面は、**開き終わった後も粒子表示を保ちます**。文字入力・日本語変換・スクロール・ボタンの操作はそのまま使え、文字や操作状態の変化も即座に描画します。見た目は設定のドット・グリッド・ストライプ・きらめきに連動します。
+
+![開いた後も粒子表示を保つ地点管理メニュー](docs/place-management-particles.png)
+
 文字と数字は、表示が整った後も粒子のままです。別の画面へ切り替えると、前の配置から粒子が移動し、新しい文字やグラフを作ります。
 
 Esc、タスクバーの時計、画面外クリックで閉じます。閉じるボタンは設けず、次に開くと前のタブを復元します。最後のタブは再起動後も引き継ぎます。閉じるときは、背景と枠も粒子の流れに合わせて右下へ縮みます。Windowsでアニメーション効果を無効にすると開閉と切り替えは即時になります。
@@ -215,7 +219,7 @@ Newsは右上の「総合」「経済」「IT」から選び、**タイトル・
 
 「更新して再起動」を押すと、ダウンロード・検証後に同じ場所のexeを置き換え、自動で再起動します。ダウンロードは画面を閉じると中止できます。更新の確認は背景で続け、差し替えを始めた後は再起動までお待ちください。
 
-![現在のバージョン・更新内容・更新ボタン。v1.28.0は表示確認用の例です](docs/app-update.png)
+![現在のバージョン・更新内容・更新ボタン。v1.30.0は表示確認用の例です](docs/app-update.png)
 
 登録地点・名前・順序・位置・縮尺、銘柄、表示設定を保存する `%LOCALAPPDATA%\OrbitCalendar` は変更しません。exeのパスを維持するため、自動起動のON/OFFとWindowsの登録先もそのままです。更新による再起動で実行中のタイマーは終了します。
 
@@ -249,5 +253,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
 バージョンは `version.txt` からexeに埋め込みます。実行中のアプリとは別の出力先で確認する場合は `-OutputDirectory build/next` を指定できます。更新機能の確認は `tools/verify-updater.ps1`、画面の確認は `tools/verify-update-ui.ps1`（Windows PowerShell・STA）、定期確認の確認は `tools/verify-update-monitor.ps1` です。時計を進めて6時間の周期・失敗後の再試行・スリープ復帰・終了時の処理を確認できます。テスト用アプリ・保存先を用意し、実際の自動起動登録は変更しません。
+
+メニューの粒子表示はソフトウェア描画にも対応したPS 2.0を同梱しています。[WPF ShaderEffectの仕様](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.effects.shadereffect)。描画を変更した場合は `tools/compile-menu-particles.ps1` で `src/menu-particles.hlsl` から再生成し、通常のビルドでexeに埋め込みます。メニューの常時粒子表示と入力・操作は `tools/verify-particle-menus.ps1`（Windows PowerShell・STA）で確認できます。
 
 粒子表現は @nomotech さんの作品を参考にしています。[画面の組み替え](https://x.com/nomotech/status/2087916696455795123) · [地球儀](https://x.com/nomotech/status/2087515108713111556) · [株価と雨雲](https://x.com/nomotech/status/2087917639263993951)
