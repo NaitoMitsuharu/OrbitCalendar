@@ -145,6 +145,7 @@ namespace OrbitCalendar
                     choices[i].Visibility = i < names.Length ? Visibility.Visible : Visibility.Collapsed;
                     if (i >= names.Length) continue;
                     choices[i].Content = names[i];
+                    choices[i].ToolTip = i == 0 && SavedPlace.Coordinate != null ? SavedPlace.DisplayName + "周辺へ戻る" : null;
                     choices[i].Background = i == index ? activeTab : Brushes.Transparent;
                 }
                 Get<TextBlock>("SectionLabel").Text = market ? "MARKET   /" : "WEATHER";
@@ -279,7 +280,7 @@ namespace OrbitCalendar
             }
             var halo = new Ellipse { Width = 14, Height = 14, Fill = Art.Ink("#492D3C"), Stroke = Art.Ink("#FFE6E6"), StrokeThickness = 1 };
             Canvas.SetLeft(halo, point.X - 7); Canvas.SetTop(halo, point.Y - 7); plot.Children.Add(halo);
-            var dot = new Ellipse { Width = 8, Height = 8, Fill = Art.Ink("#FF4949"), ToolTip = SavedPlace.Coordinate == null ? "現在地（位置情報による推定）" : "保存した基準地点" };
+            var dot = new Ellipse { Width = 8, Height = 8, Fill = Art.Ink("#FF4949"), ToolTip = SavedPlace.Coordinate == null ? "現在地（位置情報による推定）" : SavedPlace.DisplayName + "（保存した基準地点）" };
             Canvas.SetLeft(dot, point.X - 4); Canvas.SetTop(dot, point.Y - 4); plot.Children.Add(dot);
         }
 

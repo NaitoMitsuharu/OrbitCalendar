@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -256,7 +256,7 @@ namespace OrbitCalendar
             if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
                 here.Longitude >= 120 && here.Longitude <= 155)
             {
-                var local = await RadarSequence(sequence, SavedPlace.Coordinate == null ? "現在地周辺" : "保存地点周辺", here.Latitude, here.Longitude, 9, token, here).ConfigureAwait(false);
+                var local = await RadarSequence(sequence, SavedPlace.Coordinate == null ? "現在地周辺" : SavedPlace.DisplayName + "周辺", here.Latitude, here.Longitude, 9, token, here).ConfigureAwait(false);
                 if (local != null) return local;
             }
             int preset = Math.Max(1, region) - 1;
@@ -331,15 +331,15 @@ namespace OrbitCalendar
                 {
                     position = new Point(mx, my);
                     double accuracy = marker.HorizontalAccuracy;
-                    if (SavedPlace.Coordinate != null) locationHint = "保存した基準地点";
+                    if (SavedPlace.Coordinate != null) locationHint = SavedPlace.DisplayName + "（保存した基準地点）";
                     if (!double.IsNaN(accuracy) && !double.IsInfinity(accuracy))
                     {
                         accuracyPixels = accuracy / (Math.Cos(phi) * 40075016.686 / world) * scale;
                         locationHint = "現在地 推定±" + (accuracy < 1000 ? Math.Round(accuracy) + "m" : (accuracy / 1000).ToString("0.0") + "km");
                     }
-                    else locationHint = SavedPlace.Coordinate == null ? "現在地 精度不明" : "保存した基準地点";
+                    else locationHint = SavedPlace.Coordinate == null ? "現在地 精度不明" : SavedPlace.DisplayName + "（保存した基準地点）";
                 }
-                else locationHint = SavedPlace.Coordinate == null ? "現在地は表示範囲外" : "保存地点は表示範囲外";
+                else locationHint = SavedPlace.Coordinate == null ? "現在地は表示範囲外" : SavedPlace.DisplayName + "は表示範囲外";
             }
             var map = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, width * 4);
             map.Freeze();

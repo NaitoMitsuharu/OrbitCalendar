@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Device.Location;
 using System.Globalization;
 using System.IO;
@@ -73,7 +73,7 @@ namespace OrbitCalendar
         public static async Task<WeatherForecast> ForecastWeather(CancellationToken token, bool force)
         {
             var here = SavedPlace.Coordinate;
-            string place = "保存地点周辺";
+            string place = SavedPlace.DisplayName + "周辺";
             if (here == null)
             {
                 place = "現在地周辺";

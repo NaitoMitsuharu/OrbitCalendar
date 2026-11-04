@@ -1,18 +1,31 @@
-﻿$ErrorActionPreference='Stop'
+﻿param([string]$ReloadLocation)
+$ErrorActionPreference='Stop'
 Set-Location (Split-Path $PSScriptRoot)
 Add-Type -AssemblyName WindowsBase,PresentationCore,PresentationFramework,System.Device
 [Threading.SynchronizationContext]::SetSynchronizationContext([Windows.Threading.DispatcherSynchronizationContext]::new())
 $a=[Reflection.Assembly]::LoadFrom((Resolve-Path build/OrbitCalendar.exe));$sf=[Reflection.BindingFlags]'Static,Public,NonPublic';$if=[Reflection.BindingFlags]'Instance,Public,NonPublic'
+if($ReloadLocation){
+ $reloadType=$a.GetType('OrbitCalendar.SavedPlace');$reloadType.GetField('path',$sf).SetValue($null,$ReloadLocation)
+ $reopened=$reloadType.GetMethod('Load',$sf).Invoke($null,@())
+ if($null -eq $reopened -or $reloadType.GetProperty('Name',$sf).GetValue($null,$null) -ne '天王町駅'){throw 'Fresh process could not reload saved place name'}
+ Write-Output 'PASS: saved place name restored in fresh process';exit 0
+}
 $folder=Join-Path $env:TEMP ('orbit-place-search-qa-'+[guid]::NewGuid());New-Item -ItemType Directory $folder|Out-Null
 $watch=$a.GetType('OrbitCalendar.Watchlist');$watch.GetField('path',$sf).SetValue($null,(Join-Path $folder 'watchlist.json'));$watch.GetMethod('Reload',$sf).Invoke($null,@())|Out-Null
 $prefs=$a.GetType('OrbitCalendar.Preferences');$prefs.GetField('path',$sf).SetValue($null,(Join-Path $folder 'display.txt'));$prefs.GetField('LastTab',$sf).SetValue($null,0);$prefs.GetField('AnimationSpeed',$sf).SetValue($null,1)
 $a.GetType('OrbitCalendar.SavedPlace').GetProperty('Coordinate',$sf).SetValue($null,[Device.Location.GeoCoordinate]::new(35.681236,139.767125),$null)
+$a.GetType('OrbitCalendar.SavedPlace').GetProperty('Name',$sf).SetValue($null,$null,$null) # Isolate saved-place name from the user's settings.
 $data=$a.GetType('OrbitCalendar.LiveData');$catalog=$a.GetType('OrbitCalendar.Instruments').GetField('ById',$sf).GetValue($null)
 function Assert($condition,$message){if(-not $condition){throw $message}}
 function Pump([int]$ms){$frame=[Windows.Threading.DispatcherFrame]::new();$timer=[Windows.Threading.DispatcherTimer]::new();$timer.Interval=[TimeSpan]::FromMilliseconds($ms);$timer.Add_Tick({$timer.Stop();$frame.Continue=$false}.GetNewClosure());$timer.Start();[Windows.Threading.Dispatcher]::PushFrame($frame)}
 function Await($task){$end=[DateTime]::UtcNow.AddSeconds(100);while(-not $task.IsCompleted){if([DateTime]::UtcNow -gt $end){throw 'Request timeout'};Pump 50};if($task.IsFaulted){throw $task.Exception.ToString()};return $task.Result}
 
 $place=$a.GetType('OrbitCalendar.SavedPlace');$place.GetField('path',$sf).SetValue($null,(Join-Path $folder 'location.txt'))
+$nameProperty=$place.GetProperty('Name',$sf);$displayProperty=$place.GetProperty('DisplayName',$sf);$locationFile=Join-Path $folder 'location.txt'
+[IO.File]::WriteAllText($locationFile,'35.681236,139.767125')
+$legacy=$place.GetMethod('Load',$sf).Invoke($null,@());Assert ($null -ne $legacy -and $null -eq $nameProperty.GetValue($null,$null) -and $displayProperty.GetValue($null,$null) -eq '保存地点') 'Legacy coordinates-only file not compatible'
+[IO.File]::Delete($locationFile)
+
 $search=$a.GetType('OrbitCalendar.PlaceSearch')
 function Search($q){return Await ($search.GetMethod('Search',$sf).Invoke($null,[object[]]@($q,[Threading.CancellationToken]::None)))}
 $station=@(Search '天王町駅');Assert ($station.Length -gt 0 -and $station[0].Name -eq '天王町駅') 'Exact station must rank first'
@@ -49,19 +62,30 @@ try{
  Assert (-not [IO.File]::Exists((Join-Path $folder 'location.txt'))) 'Candidate saved without explicit confirmation'
  Snapshot 'place-search-confirm.png'
  Click 'SavePlace';WaitLoading
+ Assert ($nameProperty.GetValue($null,$null) -eq '天王町駅' -and [IO.File]::ReadAllLines($locationFile)[1] -eq '天王町駅') 'Selected name not stored alongside coordinates'
+ & powershell -NoProfile -STA -ExecutionPolicy Bypass -File $PSCommandPath -ReloadLocation $locationFile
+ Assert ($LASTEXITCODE -eq 0) 'Fresh process name reload failed'
+ Assert ($root.FindName('DataTitle').Text -eq '天王町駅周辺の雨雲' -and $root.FindName('Choice0').ToolTip -eq '天王町駅周辺へ戻る') 'Radar or saved-place tooltip does not show name'
+ Snapshot 'place-named-weather.png'
+ Click 'DailyMode';WaitLoading;Assert ($root.FindName('DataStamp').Text.StartsWith('天王町駅周辺')) 'Daily weather missing saved name';Click 'RainMode';WaitLoading
+
  Assert ([IO.File]::Exists((Join-Path $folder 'location.txt')) -and $null -eq $pt.GetField('candidatePlace',$if).GetValue($panel)) 'Confirmed place not saved or selection not cleared'
  $coordinate=$place.GetProperty('Coordinate',$sf).GetValue($null,$null);Assert ($coordinate -eq $candidate) 'Wrong place saved'
  $forecast=$data.GetField('CachedForecast',$sf).GetValue($null);Assert ($null -ne $forecast -and $forecast.CoordinateKey -eq ([Math]::Round($candidate.Latitude,6).ToString([Globalization.CultureInfo]::InvariantCulture)+','+[Math]::Round($candidate.Longitude,6).ToString([Globalization.CultureInfo]::InvariantCulture))) 'Saved place did not update weather forecast'
- $reloaded=$place.GetMethod('Load',$sf).Invoke($null,@());Assert ([Math]::Abs($reloaded.Latitude-$candidate.Latitude) -lt .000001) 'Saved coordinates not reloadable'
+ $nameProperty.SetValue($null,'discard-in-memory-name',$null);$reloaded=$place.GetMethod('Load',$sf).Invoke($null,@());Assert ($nameProperty.GetValue($null,$null) -eq '天王町駅') 'Name not restored from disk';Assert ([Math]::Abs($reloaded.Latitude-$candidate.Latitude) -lt .000001) 'Saved coordinates not reloadable'
  Click 'PickPlace';Pump 1900;Click 'PickOnMap';Pump 900;Assert ($pt.GetField('selectingPlace',$if).GetValue($panel) -and $root.FindName('PlaceConfirm').Visibility -eq 'Collapsed') 'Manual map selection unavailable'
  Call 'SelectPlaceAt' @([Windows.Point]::new(178,95))|Out-Null;Assert ($root.FindName('PlaceConfirm').Visibility -eq 'Visible') 'Manual map confirmation failed'
- Click 'CancelPlace';Assert ($place.GetProperty('Coordinate',$sf).GetValue($null,$null) -eq $candidate) 'Cancel changed saved location'
+ Assert ($pt.GetField('candidatePlaceName',$if).GetValue($panel) -eq $null) 'Manual new point inherited old station name';Click 'CancelPlace';Assert ($place.GetProperty('Coordinate',$sf).GetValue($null,$null) -eq $candidate) 'Cancel changed saved location'
  Click 'PickPlace';Pump 1900;$root.FindName('PlaceQuery').Text='架空の地点検索qz987654321';Click 'SearchPlace';WaitSearch;Assert ($root.FindName('PlaceResults').Children.Count -eq 0 -and $root.FindName('PlaceSearchMessage').Text.Contains('候補がありません')) 'Empty search lacks useful fallback'
  $root.FindName('PlaceQuery').Text='千葉駅';Click 'SearchPlace';Assert ($root.FindName('PlaceSearchLoading').Visibility -eq 'Visible') 'Particle loader not shown'
  $root.FindName('PlaceQuery').Text='横浜駅';Assert ($null -eq $pt.GetField('placeSearching',$if).GetValue($panel)) 'Editing query did not cancel request'
  Click 'SearchPlace';Click 'CalendarTab';Pump 2200
  Assert ($picker.Visibility -eq 'Collapsed' -and $null -eq $pt.GetField('placeSearching',$if).GetValue($panel) -and -not $pt.GetField('placeSearchTick',$if).GetValue($panel).IsEnabled) 'Tab switch leaked modal/request/loader'
- Assert ($root.FindName('TodayWeather').ToolTip.ToString().Contains('保存')) 'Calendar not using saved place'
- Write-Output 'PASS: live station/town/address search, cache/ranking/validation, paged themed editor and particle loading, map candidate preview, explicit save/reload, weather and calendar location, cancellation/manual fallback/tab cleanup'
+ Assert ($root.FindName('TodayWeather').ToolTip.ToString().Contains('天王町駅周辺')) 'Calendar not using saved place'
+ $savedBefore=$place.GetProperty('Coordinate',$sf).GetValue($null,$null)
+ $place.GetMethod('Save',$sf).Invoke($null,[object[]]@($savedBefore,'横浜市, 駅前'))|Out-Null
+ $place.GetMethod('Load',$sf).Invoke($null,@())|Out-Null;Assert ($nameProperty.GetValue($null,$null) -eq '横浜市, 駅前') 'Comma in place name broke coordinates format'
+ $place.GetMethod('Clear',$sf).Invoke($null,@())|Out-Null;Assert ($null -eq $nameProperty.GetValue($null,$null) -and $null -eq $place.GetProperty('Coordinate',$sf).GetValue($null,$null) -and -not [IO.File]::Exists($locationFile)) 'Automatic location did not clear saved name'
+ Write-Output 'PASS: live station/town/address search, cache/ranking/validation, paged themed editor and particle loading, map candidate preview, named save/reload in fresh process and legacy compatibility, weather and calendar names, cancellation/manual fallback/tab cleanup'
  Write-Output $folder
 }finally{$panel.Hide();$panel.Close()}

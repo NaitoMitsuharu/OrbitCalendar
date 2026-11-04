@@ -13,6 +13,7 @@ namespace OrbitCalendar
     {
         bool selectingPlace;
         GeoCoordinate candidatePlace;
+        string candidatePlaceName;
 
         void InitializePlacePicker()
         {
@@ -24,7 +25,7 @@ namespace OrbitCalendar
                 if (candidatePlace == null || !Get<Button>("SavePlace").IsEnabled) return;
                 try
                 {
-                    SavedPlace.Save(candidatePlace);
+                    SavedPlace.Save(candidatePlace, candidatePlaceName);
                     ReloadPlace();
                 }
                 catch (IOException) { PlaceSaveFailed(); }
@@ -67,6 +68,7 @@ namespace OrbitCalendar
             selectingPlace = false;
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             candidatePlace = null;
+            candidatePlaceName = null;
             Get<Canvas>("Plot").Cursor = Cursors.Arrow;
             Get<Button>("PickPlace").Content = "地点指定";
             Get<Border>("PlaceConfirm").Visibility = Visibility.Collapsed;
@@ -104,6 +106,7 @@ namespace OrbitCalendar
             if (latitude < 20 || latitude > 48 || longitude < 120 || longitude > 155)
             {
                 candidatePlace = null;
+                candidatePlaceName = null;
                 Get<Border>("PlaceConfirm").Visibility = Visibility.Collapsed;
                 Get<Canvas>("Plot").Children.Clear();
                 DrawRadar(activeWeather);
@@ -113,7 +116,7 @@ namespace OrbitCalendar
             }
             candidatePlace = new GeoCoordinate(latitude, longitude);
             Get<Button>("SavePlace").IsEnabled = true;
-            Get<TextBlock>("PlaceSummary").Text = latitude.ToString("F4", CultureInfo.InvariantCulture) + "°, " +
+            Get<TextBlock>("PlaceSummary").Text = (string.IsNullOrEmpty(candidatePlaceName) ? "" : candidatePlaceName + "（地図で調整）\n") + latitude.ToString("F4", CultureInfo.InvariantCulture) + "°, " +
                 longitude.ToString("F4", CultureInfo.InvariantCulture) + "°\n雨雲と今日の天気の基準地点にします";
             Get<Border>("PlaceConfirm").Visibility = Visibility.Visible;
             var plot = Get<Canvas>("Plot");
