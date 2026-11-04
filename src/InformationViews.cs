@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -24,7 +24,7 @@ namespace OrbitCalendar
             if (loading != null) loading.Cancel();
             var request = new CancellationTokenSource(); loading = request; StopRadar();
             bool news = mode == 3; int requestedMode = mode, key = news ? choice[3] : 10;
-            foreach (string name in new[] { "MarketValue", "MarketRange", "WeatherSwitch", "Plot", "TemperaturePlot", "DailyWeatherBody", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
+            foreach (string name in new[] { "MarketValue", "MarketRange", "WeatherSwitch", "Plot", "TemperaturePlot", "DailyWeatherBody", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "WeatherScroll", "ManageMarkets" }) SetVisible(name, false);
             SetVisible("NewsCategories", news);
             SetVisible("InformationBody", true); SetVisible("RegionChoices", !news); SetVisible("DataChoices", !news); SetVisible("DataSource", false);
             string[] labels = news ? new[] { "総合", "経済", "IT" } : new[] { "近隣", "JR", "私鉄" };

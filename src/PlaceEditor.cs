@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -9,6 +10,17 @@ namespace OrbitCalendar
 {
     internal partial class CalendarPanel
     {
+        string editingPlaceId;
+        void OpenPlaceEditor(string id)
+        {
+            var place = SavedPlace.Entries.FirstOrDefault(p => p.Id == id);
+            if (place == null) return;
+            editingPlaceId = id;
+            ClosePlaceSearch(false);
+            Get<TextBox>("SavedPlaceName").Text = place.Name;
+            Get<TextBlock>("PlaceEditMessage").Text = "地点や地図の縮尺はそのまま、表示名だけを変更します";
+            var picker = Get<Border>("PlaceEditPicker"); picker.Visibility = Visibility.Visible; AnimateEditorTransition(picker, false);
+        }
         void InitializePlaceEditor()
         {
             var picker = Get<Border>("PlaceEditPicker");
@@ -16,11 +28,7 @@ namespace OrbitCalendar
             picker.PreviewKeyDown += delegate { FinishMarketTransition(); };
             Get<Button>("RenamePlace").Click += delegate
             {
-                if (SavedPlace.Coordinate == null) return;
-                ClosePlaceSearch(false);
-                Get<TextBox>("SavedPlaceName").Text = SavedPlace.Name ?? "";
-                Get<TextBlock>("PlaceEditMessage").Text = "地点や地図の縮尺はそのまま、表示名だけを変更します";
-                picker.Visibility = Visibility.Visible; AnimateEditorTransition(picker, false);
+                OpenPlaceEditor(SavedPlace.ActiveId);
             };
             Get<Button>("CancelPlaceEdit").Click += delegate { ClosePlaceEditor(true); };
             Get<Button>("SavePlaceName").Click += delegate { SavePlaceName(); };
@@ -43,15 +51,17 @@ namespace OrbitCalendar
 
         void SavePlaceName()
         {
-            if (SavedPlace.Coordinate == null) { ClosePlaceEditor(true); return; }
+            if (!SavedPlace.Entries.Any(p => p.Id == editingPlaceId)) { ClosePlaceEditor(true); return; }
             string name = Get<TextBox>("SavedPlaceName").Text.Trim();
             if (string.IsNullOrWhiteSpace(name)) { Get<TextBlock>("PlaceEditMessage").Text = "地点の名前を入力してください"; return; }
+            bool active = editingPlaceId == SavedPlace.ActiveId;
             string previous = SavedPlace.DisplayName;
-            try { SavedPlace.Save(SavedPlace.Coordinate, name); }
+            try { SavedPlace.Rename(editingPlaceId, name); }
             catch (IOException) { Get<TextBlock>("PlaceEditMessage").Text = "名前を保存できませんでした。もう一度お試しください"; return; }
             catch (UnauthorizedAccessException) { Get<TextBlock>("PlaceEditMessage").Text = "名前を保存できませんでした。もう一度お試しください"; return; }
             if (loading != null) { loading.Cancel(); ClearDataLoading(); nextUpdate = DateTime.MinValue; }
-            RefreshPlaceName(previous);
+            if (active) RefreshPlaceName(previous);
+            RebuildWeatherChoices();
             ClosePlaceEditor(true);
         }
 

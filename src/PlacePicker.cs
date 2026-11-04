@@ -18,14 +18,14 @@ namespace OrbitCalendar
         void InitializePlacePicker()
         {
             InitializePlaceSearch();
-            Get<Button>("PickPlace").Click += delegate { OpenPlaceSearch(); };
+            Get<Button>("PickPlace").Click += delegate { if (showDailyWeather) { showDailyWeather = false; SwitchView(2); } OpenPlaceSearch(); };
             Get<Button>("CancelPlace").Click += delegate { CancelPlaceSelection(); effect.Refresh(); };
             Get<Button>("SavePlace").Click += delegate
             {
                 if (candidatePlace == null || !Get<Button>("SavePlace").IsEnabled) return;
                 try
                 {
-                    SavedPlace.Save(candidatePlace, candidatePlaceName);
+                    SavedPlace.Add(candidatePlace, candidatePlaceName, activeWeather == null ? MapScale.ForRegion(0) : activeWeather.Viewport.Zoom);
                     ReloadPlace();
                 }
                 catch (IOException) { PlaceSaveFailed(); }
@@ -49,12 +49,14 @@ namespace OrbitCalendar
         void ReloadPlace()
         {
             CancelPlaceSelection();
+            if (loading != null) loading.Cancel();
             for (int i = 20; i <= 23; i++) saved.Remove(i);
             activeWeather = null;
             weatherForecast = null;
             LiveData.CachedForecast = null;
             mapViewport = null;
             choice[2] = 0;
+            RebuildWeatherChoices();
             nextTodayWeather = DateTime.MinValue;
             Get<TextBlock>("TodayWeather").Text = "◌";
             Get<TextBlock>("TodayHigh").Text = ""; Get<TextBlock>("TodayLow").Text = "";
@@ -64,6 +66,7 @@ namespace OrbitCalendar
 
         void CancelPlaceSelection()
         {
+            CloseWeatherPlaces(false);
             ClosePlaceEditor(false);
             ClosePlaceSearch(false);
             selectingPlace = false;
@@ -71,7 +74,7 @@ namespace OrbitCalendar
             candidatePlace = null;
             candidatePlaceName = null;
             Get<Canvas>("Plot").Cursor = Cursors.Arrow;
-            Get<Button>("PickPlace").Content = "地点指定";
+            Get<Button>("PickPlace").Content = "＋ 地点";
             Get<Border>("PlaceConfirm").Visibility = Visibility.Collapsed;
             if (activeWeather != null && mode == 2)
             {

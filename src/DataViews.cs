@@ -90,6 +90,8 @@ namespace OrbitCalendar
             StopRadar();
             if (loading != null) loading.Cancel();
             mode = value;
+            if (mode == 2 && !showDailyWeather && choice[2] == 0 && SavedPlace.Coordinate == null && SavedPlace.IsHidden(0))
+                choice[2] = Enumerable.Range(1, 3).FirstOrDefault(r => !SavedPlace.IsHidden(r));
             Preferences.LastTab = value; Preferences.Save();
             root.Height = PreferredHeight;
             if (IsVisible) Shell.Position(this, 458, PreferredHeight);
@@ -121,11 +123,13 @@ namespace OrbitCalendar
             var instrument = market ? SelectedMarket : null;
             Get<ScrollViewer>("MarketScroll").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
             Get<Button>("ManageMarkets").Visibility = market ? Visibility.Visible : Visibility.Collapsed;
-            Get<StackPanel>("RegionChoices").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
+            Get<StackPanel>("RegionChoices").Visibility = Visibility.Collapsed;
+            SetVisible("WeatherScroll", !market);
+            if (!market) RebuildWeatherChoices();
             Get<Button>("PickPlace").IsEnabled = false;
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             Get<StackPanel>("MapTools").Visibility = market ? Visibility.Collapsed : Visibility.Visible;
-            Get<Button>("AutoPlace").Visibility = SavedPlace.Coordinate == null ? Visibility.Collapsed : Visibility.Visible;
+            Get<Button>("AutoPlace").Visibility = Visibility.Collapsed;
             Get<Canvas>("Plot").Height = market ? 220 : LiveData.MapHeight;
             Get<Canvas>("Plot").Width = market ? 414 : LiveData.MapWidth;
             SetVisible("MarketRange", market);

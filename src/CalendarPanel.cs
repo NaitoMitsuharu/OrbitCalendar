@@ -79,7 +79,12 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (Get<Border>("PlaceEditPicker").Visibility == Visibility.Visible)
+            if (Get<Border>("WeatherPlacesPicker").Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape) CloseWeatherPlaces(true);
+                else return;
+            }
+            else if (Get<Border>("PlaceEditPicker").Visibility == Visibility.Visible)
             {
                 if (e.Key == Key.Escape) ClosePlaceEditor(true);
                 else return;

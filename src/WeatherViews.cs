@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,7 +21,7 @@ namespace OrbitCalendar
         void InitializeWeatherModes()
         {
             Get<Button>("RainMode").Click += delegate { if (showDailyWeather) { showDailyWeather = false; SwitchView(2); } };
-            Get<Button>("DailyMode").Click += delegate { if (!showDailyWeather) { showDailyWeather = true; SwitchView(2); } };
+            Get<Button>("DailyMode").Click += delegate { if (!showDailyWeather) { showDailyWeather = true; choice[2] = 0; SwitchView(2); } };
         }
         void SetVisible(string name, bool visible) { Get<FrameworkElement>(name).Visibility = visible ? Visibility.Visible : Visibility.Collapsed; }
         void PrepareStandardView()
@@ -46,8 +46,10 @@ namespace OrbitCalendar
             SetVisible("MarketValue", false);
             SetVisible("NewsCategories", false);
             SetVisible("InformationBody", false); SetVisible("DailyWeatherBody", true); SetVisible("WeatherSwitch", true);
-            foreach (string name in new[] { "Plot", "TemperaturePlot", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
-            SetVisible("DataChoices", false); SetVisible("RegionChoices", false); SetVisible("DataSource", false);
+            foreach (string name in new[] { "Plot", "TemperaturePlot", "RadarControls", "RainLegend", "RadarRange", "MapHint", "PlotCaption", "MarketScroll", "ManageMarkets" }) SetVisible(name, false);
+            SetVisible("DataChoices", true); SetVisible("RegionChoices", false); SetVisible("DataSource", false);
+            SetVisible("WeatherScroll", true); SetVisible("MapTools", true); SetVisible("AutoPlace", false);
+            Get<Button>("PickPlace").IsEnabled = true; RebuildWeatherChoices();
             Get<Button>("RainMode").Background = Brushes.Transparent; Get<Button>("DailyMode").Background = activeTab;
             Get<TextBlock>("SectionLabel").Text = "WEATHER";
             SetVisible("MarketRange", false);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.IO;
 
@@ -24,10 +24,16 @@ namespace OrbitCalendar
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
-        public static int ForRegion(int region) { return zooms[Math.Max(0, Math.Min(3, region))]; }
+        public static int LegacyZoom { get { return zooms[0]; } }
+        public static int ForRegion(int region) { return region == 0 && SavedPlace.Active != null ? SavedPlace.Active.Zoom : zooms[Math.Max(0, Math.Min(3, region))]; }
         public static bool Remember(int region, int zoom)
         {
             if (region < 0 || region > 3 || zoom < 4 || zoom > 10) return false;
+            if (region == 0 && SavedPlace.Active != null)
+            {
+                try { return SavedPlace.UpdateZoom(zoom); }
+                catch (IOException) { return false; } catch (UnauthorizedAccessException) { return false; }
+            }
             if (zooms[region] == zoom) return true;
             var updated = (int[])zooms.Clone(); updated[region] = zoom;
             string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";

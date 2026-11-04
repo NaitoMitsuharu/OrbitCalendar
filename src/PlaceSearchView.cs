@@ -21,6 +21,7 @@ namespace OrbitCalendar
 
         void InitializePlaceSearch()
         {
+            InitializeWeatherPlaces();
             InitializePlaceEditor();
             var picker = Get<Border>("PlaceSearchPicker");
             placeSearchParticles = new ParticleLoading(); Get<Grid>("PlaceSearchLoading").Children.Add(placeSearchParticles);
@@ -123,7 +124,7 @@ namespace OrbitCalendar
         {
             if (activeWeather == null) return;
             StopRadar(); selectingPlace = true; candidatePlace = null; candidatePlaceName = null;
-            Get<Canvas>("Plot").Cursor = Cursors.Cross; Get<Button>("PickPlace").Content = "地点指定";
+            Get<Canvas>("Plot").Cursor = Cursors.Cross; Get<Button>("PickPlace").Content = "＋ 地点";
             Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
             Get<TextBlock>("MapHint").Text = "地図をクリックして基準地点を指定してください"; effect.Refresh();
         }
