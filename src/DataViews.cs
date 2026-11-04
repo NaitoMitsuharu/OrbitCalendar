@@ -104,7 +104,7 @@ namespace OrbitCalendar
 
         async void LoadView(bool force)
         {
-            if (mode == 0 || !IsVisible) return;
+            if (mode == 0 || !IsVisible || IsClosing) return;
             if (mode >= 3) { await LoadInformation(force); return; }
             if (mode == 2 && showDailyWeather) { await LoadDailyWeather(force); return; }
             if (loading != null) loading.Cancel();

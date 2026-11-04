@@ -21,6 +21,7 @@ namespace OrbitCalendar
 
         void InitializePlaceSearch()
         {
+            InitializePlaceEditor();
             var picker = Get<Border>("PlaceSearchPicker");
             placeSearchParticles = new ParticleLoading(); Get<Grid>("PlaceSearchLoading").Children.Add(placeSearchParticles);
             placeSearchTick.Tick += delegate { placeSearchParticles.Phase = placeSearchClock.Elapsed.TotalSeconds; placeSearchParticles.InvalidateVisual(); };
@@ -53,6 +54,7 @@ namespace OrbitCalendar
             CancelPlaceSelection(); StopRadar();
             Get<Border>("PlaceSearchPicker").Visibility = Visibility.Visible;
             Get<TextBlock>("PlaceSearchMessage").Text = placeResults.Length == 0 ? "例：天王町駅 ／ 横浜市 ／ 住所" : placeResults.Length + "件 · 候補を選んで地図で確認";
+            Get<Button>("RenamePlace").Visibility = SavedPlace.Coordinate == null ? Visibility.Collapsed : Visibility.Visible;
             DrawPlaceResults(); AnimateEditorTransition(Get<Border>("PlaceSearchPicker"), false);
         }
 
@@ -131,7 +133,7 @@ namespace OrbitCalendar
             ClosePlaceSearch(true); BeginMapPlaceSelection(); selectingPlace = true; candidatePlace = result.Coordinate; candidatePlaceName = result.Name;
             Get<TextBlock>("PlaceSummary").Text = result.Name + "\n" + result.Position;
             Get<Border>("PlaceConfirm").Visibility = Visibility.Visible;
-            mapViewport = new LiveData.Viewport { Latitude = result.Coordinate.Latitude, Longitude = result.Coordinate.Longitude, Zoom = 9, Name = "検索候補周辺", Marker = activeWeather == null ? SavedPlace.Coordinate : activeWeather.Viewport.Marker };
+            mapViewport = new LiveData.Viewport { Latitude = result.Coordinate.Latitude, Longitude = result.Coordinate.Longitude, Zoom = MapScale.ForRegion(0), Name = "検索候補周辺", Marker = activeWeather == null ? SavedPlace.Coordinate : activeWeather.Viewport.Marker };
             Get<Button>("SavePlace").IsEnabled = false;
             choice[2] = 0; LoadView(false);
         }

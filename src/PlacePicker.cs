@@ -64,6 +64,7 @@ namespace OrbitCalendar
 
         void CancelPlaceSelection()
         {
+            ClosePlaceEditor(false);
             ClosePlaceSearch(false);
             selectingPlace = false;
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;

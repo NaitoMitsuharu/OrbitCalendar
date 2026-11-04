@@ -79,7 +79,12 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (Get<Border>("PlaceSearchPicker").Visibility == Visibility.Visible)
+            if (Get<Border>("PlaceEditPicker").Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape) ClosePlaceEditor(true);
+                else return;
+            }
+            else if (Get<Border>("PlaceSearchPicker").Visibility == Visibility.Visible)
             {
                 if (e.Key == Key.Escape) ClosePlaceSearch(true);
                 else return;
@@ -213,6 +218,7 @@ namespace OrbitCalendar
         public void Collapse()
         {
             if (!IsVisible || IsClosing) return;
+            zoomWait.Stop();
             CloseMarketSettings();
             Get<Border>("RangePicker").Visibility = Visibility.Collapsed;
             Get<Border>("CreditsPicker").Visibility = Visibility.Collapsed;

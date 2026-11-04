@@ -256,12 +256,12 @@ namespace OrbitCalendar
             if (region == 0 && here != null && here.Latitude >= 20 && here.Latitude <= 48 &&
                 here.Longitude >= 120 && here.Longitude <= 155)
             {
-                var local = await RadarSequence(sequence, SavedPlace.Coordinate == null ? "現在地周辺" : SavedPlace.DisplayName + "周辺", here.Latitude, here.Longitude, 9, token, here).ConfigureAwait(false);
+                var local = await RadarSequence(sequence, SavedPlace.Coordinate == null ? "現在地周辺" : SavedPlace.DisplayName + "周辺", here.Latitude, here.Longitude, MapScale.ForRegion(0), token, here).ConfigureAwait(false);
                 if (local != null) return local;
             }
             int preset = Math.Max(1, region) - 1;
             var map = await RadarSequence(sequence, Regions[preset + 1], new[] { 35.7, 35.7, 34.8 }[preset],
-                new[] { 136.6, 139.7, 135.5 }[preset], preset == 0 ? 4 : 7, token, here ?? (DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null)).ConfigureAwait(false);
+                new[] { 136.6, 139.7, 135.5 }[preset], MapScale.ForRegion(preset + 1), token, here ?? (DateTime.UtcNow - lastPositionTime < TimeSpan.FromMinutes(30) ? lastPosition : null)).ConfigureAwait(false);
             if (map == null) throw new InvalidDataException();
             return map;
         }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -45,6 +45,13 @@ namespace OrbitCalendar
                 double factor = Math.Pow(2, zoom - start.Zoom);
                 mapViewport = MoveMap(start, (at.X - LiveData.MapWidth / 2.0) * (1 - factor * newScale / oldScale),
                     (at.Y - LiveData.MapHeight / 2.0) * (1 - factor * newScale / oldScale), zoom);
+                nextUpdate = DateTime.MinValue;
+                saved.Remove(20 + choice[2]);
+                if (!MapScale.Remember(choice[2], zoom))
+                {
+                    Get<TextBlock>("MapHint").Text = "縮尺を保存できませんでした。次回の拡大縮小で再試行します";
+                    Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
+                }
                 if (loading != null) loading.Cancel();
                 zoomWait.Stop(); zoomWait.Start();
             };
