@@ -14,6 +14,7 @@ function Call($type,$name,$arguments=@()){for($i=0;$i -lt $arguments.Count;$i++)
 function Await($task,[int]$seconds=60){$end=[DateTime]::UtcNow.AddSeconds($seconds);while(-not $task.IsCompleted){if([DateTime]::UtcNow -gt $end){throw 'Live request timeout'};Start-Sleep -Milliseconds 50};if($task.IsFaulted){throw $task.Exception.ToString()};if($task.IsCanceled){throw 'Request canceled'};return $task.Result}
 $release=Await (Call $updates 'Check' @([Threading.CancellationToken]::None))
 Write-Output ('Official release: '+$release.Tag)
+if($TargetExecutable){Assert ($release.Version -eq $a.GetName().Version) 'Latest release does not match the candidate; refusing to replace the running application'}
 $staged=[string](Await (Call $updates 'Download' @($release,$null,[Threading.CancellationToken]::None)) 180)
 $work=Split-Path $staged
 Assert ((Hash $staged) -eq $release.Sha256) 'Live asset checksum mismatch'
