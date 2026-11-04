@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -9,6 +9,7 @@ namespace OrbitCalendar
 {
     internal partial class CalendarPanel
     {
+        Border editorTransitionPicker;
         Grid marketTransitionHost;
         Image marketTransitionImage;
         AssemblyEffect marketTransition;
@@ -33,22 +34,25 @@ namespace OrbitCalendar
             marketTransitionFinish.Stop();
             if (marketTransition == null) return;
             marketTransition.Stop(); marketTransitionHost.Visibility = Visibility.Collapsed;
-            Get<Border>("MarketPicker").Opacity = 1;
+            if (editorTransitionPicker != null) editorTransitionPicker.Opacity = 1;
         }
         void CaptureMarketTransition()
         {
-            var picker = Get<Border>("MarketPicker"); picker.Opacity = 1; UpdateLayout();
+            var picker = editorTransitionPicker; picker.Opacity = 1; UpdateLayout();
             int width = (int)picker.ActualWidth, height = (int)picker.ActualHeight;
             var frame = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             var visual = new DrawingVisual();
             using (var drawing = visual.RenderOpen()) drawing.DrawRectangle(new VisualBrush(picker) { Stretch = Stretch.Fill }, null, new Rect(0, 0, width, height));
             frame.Render(visual); frame.Freeze(); marketTransitionImage.Source = frame;
         }
-        void AnimateMarketTransition(bool closing)
+        void AnimateMarketTransition(bool closing) { AnimateEditorTransition(Get<Border>("MarketPicker"), closing); }
+        void AnimateEditorTransition(Border picker, bool closing)
         {
-            var picker = Get<Border>("MarketPicker");
             if (!IsVisible || picker.Visibility != Visibility.Visible || !SystemParameters.ClientAreaAnimation) { if (closing) picker.Visibility = Visibility.Collapsed; return; }
-            marketTransitionFinish.Stop(); marketTransition.Stop(); CaptureMarketTransition();
+            FinishMarketTransition(); editorTransitionPicker = picker;
+            marketTransitionHost.Width = picker.Width; marketTransitionHost.Height = picker.Height; marketTransitionHost.Margin = picker.Margin;
+            marketTransitionImage.Width = picker.Width; marketTransitionImage.Height = picker.Height;
+            CaptureMarketTransition();
             marketTransitionHost.Visibility = Visibility.Visible; picker.Opacity = 0; UpdateLayout();
             marketTransition.Start(true);
             if (closing)

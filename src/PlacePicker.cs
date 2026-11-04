@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Device.Location;
 using System.Globalization;
 using System.IO;
@@ -16,23 +16,12 @@ namespace OrbitCalendar
 
         void InitializePlacePicker()
         {
-            Get<Button>("PickPlace").Click += delegate
-            {
-                if (selectingPlace) { CancelPlaceSelection(); effect.Refresh(); return; }
-                if (activeWeather == null || loading != null) return;
-                StopRadar();
-                selectingPlace = true;
-                Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
-                candidatePlace = null;
-                Get<Canvas>("Plot").Cursor = Cursors.Cross;
-                Get<Button>("PickPlace").Content = "指定をやめる";
-                Get<TextBlock>("MapHint").Text = "地図をクリックして基準地点を指定してください";
-                effect.Refresh();
-            };
+            InitializePlaceSearch();
+            Get<Button>("PickPlace").Click += delegate { OpenPlaceSearch(); };
             Get<Button>("CancelPlace").Click += delegate { CancelPlaceSelection(); effect.Refresh(); };
             Get<Button>("SavePlace").Click += delegate
             {
-                if (candidatePlace == null) return;
+                if (candidatePlace == null || !Get<Button>("SavePlace").IsEnabled) return;
                 try
                 {
                     SavedPlace.Save(candidatePlace);
@@ -74,6 +63,7 @@ namespace OrbitCalendar
 
         void CancelPlaceSelection()
         {
+            ClosePlaceSearch(false);
             selectingPlace = false;
             Get<TextBlock>("MapHint").Visibility = Visibility.Collapsed;
             candidatePlace = null;
@@ -122,6 +112,7 @@ namespace OrbitCalendar
                 return;
             }
             candidatePlace = new GeoCoordinate(latitude, longitude);
+            Get<Button>("SavePlace").IsEnabled = true;
             Get<TextBlock>("PlaceSummary").Text = latitude.ToString("F4", CultureInfo.InvariantCulture) + "°, " +
                 longitude.ToString("F4", CultureInfo.InvariantCulture) + "°\n雨雲と今日の天気の基準地点にします";
             Get<Border>("PlaceConfirm").Visibility = Visibility.Visible;

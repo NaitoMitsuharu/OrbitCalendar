@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -227,6 +227,14 @@ namespace OrbitCalendar
                     loading = null;
                     refresh.IsEnabled = !market || instrument != null && instrument.Supported;
                     Get<Button>("PickPlace").IsEnabled = mode == 2 && activeWeather != null;
+                    if (mode == 2 && selectingPlace && candidatePlace != null && activeWeather != null)
+                    {
+                        var point = PlacePixel(activeWeather.Viewport, candidatePlace);
+                        bool visible = point.X >= 0 && point.X <= LiveData.MapWidth && point.Y >= 0 && point.Y <= LiveData.MapHeight;
+                        Get<Button>("SavePlace").IsEnabled = visible;
+                        Get<TextBlock>("MapHint").Visibility = Visibility.Visible;
+                        Get<TextBlock>("MapHint").Text = visible ? "橙色の候補を確認して保存 · 地図クリックで調整できます" : "候補の地図を取得できませんでした。更新で再試行してください";
+                    }
                     if (mode != 0 && IsVisible)
                     {
                         effect.Refresh();

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -42,6 +42,7 @@ namespace OrbitCalendar
             Get<Button>("CloseCredits").Click += delegate { ClosePanel("CreditsPicker"); };
             string[,] links = {
                 { "地図：国土地理院（色を加工）", "https://maps.gsi.go.jp/development/ichiran.html" },
+                { "地点検索：国土地理院", "https://maps.gsi.go.jp/" },
                 { "雨雲：気象庁", "https://www.jma.go.jp/bosai/nowc/" },
                 { "天気・気温：Open-Meteo · CC BY 4.0", "https://open-meteo.com/" },
                 { "地球・県境：Natural Earth", "https://www.naturalearthdata.com/about/terms-of-use/" },

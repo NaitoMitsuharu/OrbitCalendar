@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Reflection;
 using System.Windows;
@@ -79,7 +79,12 @@ namespace OrbitCalendar
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (e.Key == Key.Escape && Get<Border>("MarketPicker").Visibility == Visibility.Visible) CloseMarketSettings();
+            if (Get<Border>("PlaceSearchPicker").Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape) ClosePlaceSearch(true);
+                else return;
+            }
+            else if (e.Key == Key.Escape && Get<Border>("MarketPicker").Visibility == Visibility.Visible) CloseMarketSettings();
             else if (Get<Border>("MarketPicker").Visibility == Visibility.Visible) return;
             else if (e.Key == Key.Escape && selectingPlace) { CancelPlaceSelection(); effect.Refresh(); }
             else if (e.Key == Key.Escape && Get<Border>("SpeedPicker").Visibility == Visibility.Visible) ClosePanel("SpeedPicker");
