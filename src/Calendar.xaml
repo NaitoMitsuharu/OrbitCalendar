@@ -44,6 +44,7 @@
       <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Grid Margin="17,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center">
         <Button Name="CalendarTab" Content="カレンダー" Width="80"/>
+        <Button Name="TodoTab" Content="ToDo" Width="62"/>
         <Button Name="MarketTab" Content="株価" Width="48"/>
         <Button Name="WeatherTab" Content="天気" Width="48"/>
         <Button Name="NewsTab" Content="News" Width="50"/>
@@ -74,12 +75,14 @@
       <Border Grid.Row="2" Background="#152E39" CornerRadius="7" Margin="16,0,16,7" Padding="12,0">
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <TextBlock Name="SelectedDate" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock Name="SelectedDate" Grid.RowSpan="2" FontSize="24" FontFamily="Bahnschrift" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+          <TextBlock Name="TodoDayTasks" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" FontSize="12" TextTrimming="CharacterEllipsis" Background="Transparent" Margin="10,0,0,8" Cursor="Hand" Visibility="Collapsed"/>
           <StackPanel Name="TodayWeatherGroup" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <TextBlock Name="TodayWeather" Text="" FontSize="26" FontFamily="Segoe UI Symbol" Foreground="#F4DD8E" VerticalAlignment="Center"/>
             <StackPanel Name="TodayTemperatures" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center"><TextBlock Name="TodayHigh" FontSize="12" Foreground="#F4B09F"/><TextBlock Name="TodayLow" FontSize="12" Foreground="#8EC5FF" Margin="8,0,0,0"/></StackPanel>
           </StackPanel>
-          <TextBlock Name="HolidayName" Grid.Column="1" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="11" Foreground="#FF9699" VerticalAlignment="Center" Margin="10,0,10,0"/>
+          <TextBlock Name="HolidayName" Grid.Column="1" TextTrimming="CharacterEllipsis" Background="Transparent" FontSize="11" Foreground="#FF9699" VerticalAlignment="Center" Margin="10,0,10,0"/>
 
         </Grid>
       </Border>
@@ -140,6 +143,55 @@
         </Grid>
         <Button Name="DataSource" HorizontalAlignment="Left" Foreground="#A6D3D6" Padding="0,2"/>
       </StackPanel>
+      <Grid Grid.Row="1" Name="TodoBody" Margin="20,12,20,12" Visibility="Collapsed">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+        <Grid Name="TodoHeader">
+          <StackPanel>
+            <TextBlock Text="TODO" Foreground="#86E8DE" FontFamily="Consolas" FontSize="13" Height="25" Padding="0,4,0,0"/>
+            <TextBlock Name="TodoHeading" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,0"/>
+            <TextBlock Name="TodoSummary" Foreground="#D0E5EB" FontSize="14" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+          <Button Name="AddTodo" Content="＋" Width="44" Height="44" FontSize="26" Padding="0,0,0,3" Background="#287181" Foreground="#E5FFFF" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,0,0" ToolTip="タスクを追加" AutomationProperties.Name="タスクを追加"/>
+        </Grid>
+        <StackPanel Grid.Row="1" Name="TodoList" Margin="0,10,0,0"/>
+        <Grid Grid.Row="2" Name="TodoFooter">
+          <Button Name="TodoDoneToggle" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="#92B5BE" FontSize="12" Padding="6,3" Margin="-6,0,0,0" Visibility="Collapsed"/>
+          <StackPanel Name="TodoUndo" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+            <TextBlock Name="TodoUndoText" Foreground="#B8E9E4" FontSize="12" MaxWidth="250" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            <Button Name="TodoUndoButton" Content="元に戻す" Foreground="#8FE4DD" Margin="6,0,0,0" FontSize="12"/>
+          </StackPanel>
+          <StackPanel Name="TodoPager" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed">
+            <Button Name="TodoPrevious" Content="‹" Width="32" FontSize="18" Padding="0" AutomationProperties.Name="前のタスクページ"/>
+            <TextBlock Name="TodoPage" Width="52" TextAlignment="Center" VerticalAlignment="Center" FontSize="12" Foreground="#AFCAD2"/>
+            <Button Name="TodoNext" Content="›" Width="32" FontSize="18" Padding="0" AutomationProperties.Name="次のタスクページ"/>
+          </StackPanel>
+        </Grid>
+        <Grid Name="TodoDetail" Grid.RowSpan="3" Background="#0B1923" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="32"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="44"/></Grid.RowDefinitions>
+          <Button Name="TodoBack" Content="‹  一覧" HorizontalAlignment="Left" Foreground="#8FE4DD" Padding="6,3"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="EditTodo" Content="編集" Background="#193B48" Padding="10,3"/>
+            <Button Name="DeleteTodo" Content="削除" Margin="6,0,0,0" Padding="10,3"/>
+          </StackPanel>
+          <StackPanel Grid.Row="1" Margin="0,10,0,0">
+            <TextBlock Name="TodoDetailTitle" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" MaxHeight="62" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Name="TodoDetailDue" FontSize="13" Margin="0,5,0,0"/>
+          </StackPanel>
+          <Border Grid.Row="2" Background="#152E39" CornerRadius="8" Margin="0,10,0,8">
+            <ScrollViewer Name="TodoDetailScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="14,12,8,12">
+              <ScrollViewer.Resources><Style TargetType="ScrollBar"><Setter Property="Width" Value="7"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar">
+                <Border Background="Transparent"><Track Name="PART_Track" Orientation="Vertical" IsDirectionReversed="True" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value}" ViewportSize="{TemplateBinding ViewportSize}">
+                  <Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.PageUpCommand"><RepeatButton.Template><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate></RepeatButton.Template></RepeatButton></Track.DecreaseRepeatButton>
+                  <Track.Thumb><Thumb><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="#528793" CornerRadius="3" Margin="1"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+                  <Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.PageDownCommand"><RepeatButton.Template><ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate></RepeatButton.Template></RepeatButton></Track.IncreaseRepeatButton>
+                </Track></Border>
+              </ControlTemplate></Setter.Value></Setter></Style></ScrollViewer.Resources>
+              <StackPanel Name="TodoDetailContent" Margin="0,0,6,0"/>
+            </ScrollViewer>
+          </Border>
+          <Button Name="CompleteTodo" Grid.Row="3" Content="✓  Done" Background="#287181" Foreground="#E5FFFF" FontSize="14" Padding="20,7" HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip="完了して一覧から外す"/>
+        </Grid>
+      </Grid>
       <Grid Name="LoadingArea" Grid.Row="1" Margin="20,153,20,24" Background="#0B1923" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.Name="データを読み込んでいます"/>
 
       <Border Name="RangePicker" Grid.RowSpan="2" Width="156" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="108,87,0,0" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="7" Padding="7" Visibility="Collapsed"><StackPanel Name="RangeChoices"/></Border>
@@ -153,8 +205,12 @@
           </Grid>
           <TextBlock Text="見た目" Foreground="#92B5BE" FontSize="12" Margin="4,0,0,3"/>
           <UniformGrid Name="PatternChoices" Columns="4"/>
-          <StackPanel Orientation="Horizontal" Margin="4,9,4,3"><Button Name="SettingsTransition" Content="画面切り替え"/><Button Name="SettingsLoading" Content="読み込み中" Margin="6,0,0,0"/></StackPanel>
-          <Grid Name="SettingsSection" Height="180"><StackPanel Name="TransitionSettings">
+          <StackPanel Orientation="Horizontal" Margin="4,9,4,3"><Button Name="SettingsTransition" Content="画面切り替え"/><Button Name="SettingsLoading" Content="読み込み中" Margin="6,0,0,0"/><Button Name="SettingsTabs" Content="表示するタブ" Margin="6,0,0,0"/></StackPanel>
+          <Grid Name="SettingsSection" Height="180"><StackPanel Name="TabSettings" Visibility="Collapsed">
+            <TextBlock Text="表示するタブ" Foreground="#92B5BE" FontSize="12" Margin="4,9,0,3"/>
+            <UniformGrid Name="TabChoices" Columns="3"/>
+            <TextBlock Name="TabSettingsHint" Text="押すと表示／非表示を切り替えます。カレンダーは常に表示されます" Foreground="#92B5BE" FontSize="11" TextWrapping="Wrap" Margin="4,10,4,0"/>
+          </StackPanel><StackPanel Name="TransitionSettings">
           <TextBlock Text="組み上がり方" Foreground="#92B5BE" FontSize="12" Margin="4,9,0,3"/>
           <UniformGrid Name="MotionChoices" Columns="3"/>
           <Border Name="PreviewArea" BorderBrush="#2A5965" BorderThickness="1" CornerRadius="6" Padding="12" Margin="4,10,4,3">
@@ -264,6 +320,96 @@
         <TextBlock Grid.Row="3" Text="表示する既存のタブ" Foreground="#92B5BE" FontSize="12" VerticalAlignment="Center"/>
         <UniformGrid Name="WeatherPresetChoices" Grid.Row="4" Columns="2"/>
         <Button Name="AddWeatherPlace" Grid.Row="5" Content="＋ 地点を追加" Background="#287181" HorizontalAlignment="Right" Padding="12,4" Margin="0,5,0,0"/>
+      </Grid>
+    </Border>
+    <Border Name="TimetableEditor" Width="422" Height="468" VerticalAlignment="Bottom" Margin="0,0,0,16" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="16,12,16,14" Visibility="Collapsed">
+      <Border.Resources>
+        <Style TargetType="TextBox"><Setter Property="Foreground" Value="#E3F4F4"/><Setter Property="Background" Value="#0B1923"/><Setter Property="BorderBrush" Value="#528793"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CaretBrush" Value="#8FE4DD"/><Setter Property="SelectionBrush" Value="#287181"/></Style>
+      </Border.Resources>
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="32"/><RowDefinition Height="20"/><RowDefinition Height="36"/><RowDefinition Height="38"/><RowDefinition Height="*"/><RowDefinition Height="22"/><RowDefinition Height="34"/><RowDefinition Height="20"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+        <Grid><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Name="TimetableEditorTitle" Text="時刻表を登録" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/>
+          <Button Name="TimetableOdptMode" Content="ODPTから取得" FontSize="11" Padding="8,3" Margin="12,0,0,0"/><Button Name="TimetableManualMode" Content="手入力" FontSize="11" Padding="8,3" Margin="4,0,0,0"/></StackPanel>
+          <Button Name="CloseTimetableEditor" Content="×" Width="28" Height="28" HorizontalAlignment="Right" AutomationProperties.Name="時刻表の編集を閉じる"/></Grid>
+        <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="5*"/><ColumnDefinition Width="5*"/><ColumnDefinition Width="4*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="駅" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/>
+          <TextBlock Grid.Column="1" Text="路線（任意）" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom" Margin="6,0,0,0"/>
+          <TextBlock Grid.Column="2" Text="方面（任意）" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom" Margin="6,0,0,0"/>
+        </Grid>
+        <Grid Grid.Row="2" Margin="0,3,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="5*"/><ColumnDefinition Width="5*"/><ColumnDefinition Width="4*"/></Grid.ColumnDefinitions>
+          <TextBox Name="TimetableStation" MaxLength="40" FontSize="14" Padding="7,3" VerticalContentAlignment="Center" AutomationProperties.Name="駅名"/>
+          <TextBox Name="TimetableLine" Grid.Column="1" Margin="6,0,0,0" MaxLength="40" FontSize="14" Padding="7,3" VerticalContentAlignment="Center" AutomationProperties.Name="路線名"/>
+          <TextBox Name="TimetableDirection" Grid.Column="2" Margin="6,0,0,0" MaxLength="40" FontSize="14" Padding="7,3" VerticalContentAlignment="Center" AutomationProperties.Name="方面"/>
+        </Grid>
+        <Grid Grid.Row="3" Margin="0,6,0,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Button Name="TimetableWeekdayTab" Content="平日" Padding="12,3"/><Button Name="TimetableHolidayTab" Content="土休日" Margin="5,0,0,0" Padding="12,3"/></StackPanel>
+          <TextBlock Name="TimetableCount" Foreground="#B8E9E4" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+        </Grid>
+        <TextBox Name="TimetableText" Grid.Row="4" Margin="0,4,0,0" FontFamily="Consolas, Yu Gothic UI" FontSize="13" Padding="7,5" AcceptsReturn="True" AcceptsTab="False" TextWrapping="NoWrap" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" MaxLength="20000" AutomationProperties.Name="時刻（1行に1時間分）"/>
+        <TextBlock Grid.Row="5" Text="1行に「時  分 分 分…」。分のあとに種別や行き先を書けます" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/>
+        <TextBlock Name="TimetableExample" Grid.Row="6" FontFamily="Consolas, Yu Gothic UI" Foreground="#6F939C" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" Text="例  7: 04 13急 21 29海老名    8: 06 13 21快"/>
+        <Grid Name="OdptPanel" Grid.Row="1" Grid.RowSpan="6" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="20"/><RowDefinition Height="38"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <Grid><TextBlock Text="鉄道会社" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/><Button Name="OdptTokenButton" Content="アクセストークン" FontSize="10" Padding="6,1" Foreground="#92B5BE" HorizontalAlignment="Right"/></Grid>
+          <UniformGrid Name="OdptOperators" Grid.Row="1" Columns="4" Margin="0,3,0,0"/>
+          <TextBlock Grid.Row="2" Text="駅名" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/>
+          <Grid Grid.Row="3" Margin="0,3,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="64"/></Grid.ColumnDefinitions>
+            <TextBox Name="OdptQuery" MaxLength="40" FontSize="14" Padding="7,3" VerticalContentAlignment="Center" AutomationProperties.Name="ODPTで探す駅名"/>
+            <Button Name="OdptSearch" Grid.Column="1" Content="検索" Margin="6,0,0,0" Background="#287181" Foreground="#E5FFFF"/>
+          </Grid>
+          <StackPanel Name="OdptResults" Grid.Row="4" Margin="0,8,0,0"/>
+          <TextBlock Name="OdptStatus" Grid.Row="5" Foreground="#B8E9E4" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </Grid>
+        <Grid Name="OdptTokenPanel" Grid.Row="1" Grid.RowSpan="6" Visibility="Collapsed">
+          <StackPanel>
+            <TextBlock Text="ODPTのアクセストークン" FontSize="13" Foreground="#E3F4F4" Margin="0,4,0,4"/>
+            <TextBlock Text="developer.odpt.org の登録後に発行されるトークンを貼り付けてください。このPCのユーザーだけが読める形で保存します。" Foreground="#92B5BE" FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Text="通常のトークン（横浜市営地下鉄・東京メトロ・都営など）" Foreground="#92B5BE" FontSize="11" Margin="0,12,0,3"/>
+            <PasswordBox Name="OdptStandardToken" FontSize="13" Padding="7,4" Foreground="#E3F4F4" Background="#0B1923" BorderBrush="#528793" CaretBrush="#8FE4DD" AutomationProperties.Name="ODPTの通常のアクセストークン"/>
+            <TextBlock Text="チャレンジ用のトークン（相鉄・東急・JR東日本・京急）" Foreground="#92B5BE" FontSize="11" Margin="0,10,0,3"/>
+            <PasswordBox Name="OdptChallengeToken" FontSize="13" Padding="7,4" Foreground="#E3F4F4" Background="#0B1923" BorderBrush="#528793" CaretBrush="#8FE4DD" AutomationProperties.Name="ODPTチャレンジ用のアクセストークン"/>
+            <TextBlock Text="チャレンジ限定データは2027年3月12日までの利用です。期限後はこのアプリが自動で削除します。" Foreground="#6F939C" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0"><Button Name="OdptTokenCancel" Content="戻る" Padding="12,4" Margin="0,0,8,0"/><Button Name="OdptTokenSave" Content="トークンを保存" Background="#287181" Foreground="#E5FFFF" Padding="12,4"/></StackPanel>
+          </StackPanel>
+        </Grid>
+        <TextBlock Name="TimetableEditorMessage" Grid.Row="7" Foreground="#FFB088" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <Grid Grid.Row="8"><Button Name="DeleteTimetable" Content="削除" HorizontalAlignment="Left" Padding="10,5" Visibility="Collapsed"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="CancelTimetableEditor" Content="取消" Margin="0,0,8,0" Padding="12,5"/><Button Name="SaveTimetable" Content="登録する" Background="#287181" Foreground="#E5FFFF" Padding="16,5"/></StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+    <Border Name="TodoEditor" Width="422" Height="452" VerticalAlignment="Bottom" Margin="0,0,0,24" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="16,12,16,14" Visibility="Collapsed" AllowDrop="True">
+      <Border.Resources>
+        <Style TargetType="TextBox"><Setter Property="Foreground" Value="#E3F4F4"/><Setter Property="Background" Value="#0B1923"/><Setter Property="BorderBrush" Value="#528793"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CaretBrush" Value="#8FE4DD"/><Setter Property="SelectionBrush" Value="#287181"/></Style>
+      </Border.Resources>
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="32"/><RowDefinition Height="20"/><RowDefinition Height="38"/><RowDefinition Height="26"/><RowDefinition Height="*"/><RowDefinition Height="26"/><RowDefinition Height="56"/><RowDefinition Height="26"/><RowDefinition Height="32"/><RowDefinition Height="22"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+        <Grid><TextBlock Name="TodoEditorTitle" Text="タスクを追加" FontSize="16" Foreground="#8FE4DD" VerticalAlignment="Center"/><Button Name="CloseTodoEditor" Content="×" Width="28" Height="28" HorizontalAlignment="Right" AutomationProperties.Name="タスクの編集を閉じる"/></Grid>
+        <TextBlock Grid.Row="1" Text="タイトル" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/>
+        <TextBox Name="TodoTitle" Grid.Row="2" Margin="0,3,0,0" MaxLength="120" FontSize="15" Padding="8,4" VerticalContentAlignment="Center" AutomationProperties.Name="タスクのタイトル"/>
+        <TextBlock Grid.Row="3" Text="説明（任意）  URLはリンクになります" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/>
+        <TextBox Name="TodoNotes" Grid.Row="4" Margin="0,3,0,0" FontSize="13" Padding="7,5" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxLength="4000" AutomationProperties.Name="タスクの説明"/>
+        <Grid Grid.Row="5"><TextBlock Text="画像（任意）" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/></Grid>
+        <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,5,0,0">
+          <Button Name="AddTodoImage" Content="＋ 画像" Background="#193B48" Width="64" Height="46" FontSize="12" ToolTip="画像ファイルを選んで添付"/>
+          <StackPanel Name="TodoImageStrip" Orientation="Horizontal" Margin="6,0,0,0"/>
+        </StackPanel>
+        <TextBlock Grid.Row="7" Text="期限（任意）" Foreground="#92B5BE" FontSize="11" VerticalAlignment="Bottom"/>
+        <Grid Grid.Row="8" Margin="0,3,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+          <StackPanel Name="TodoDueChoices" Orientation="Horizontal"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="TodoDuePrevious" Content="‹" Width="26" FontSize="17" Padding="0" Background="#193B48" AutomationProperties.Name="期限を1日前へ"/>
+            <Button Name="TodoDueText" Width="112" FontSize="13" Padding="2,3" Margin="3,0" Background="#0B1923" ToolTip="クリックで月のカレンダーから選択 · ホイールで1日ずつ変更"/>
+            <Button Name="TodoDueNext" Content="›" Width="26" FontSize="17" Padding="0" Background="#193B48" AutomationProperties.Name="期限を1日後へ"/>
+          </StackPanel>
+        </Grid>
+        <Border Name="TodoMonthPicker" Grid.RowSpan="11" Width="252" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,90" Background="#0E2430" BorderBrush="#528793" BorderThickness="1" CornerRadius="8" Padding="8" Visibility="Collapsed">
+          <StackPanel>
+            <Grid Height="28"><Button Name="TodoMonthPrevious" Content="‹" Width="28" FontSize="17" Padding="0" HorizontalAlignment="Left" AutomationProperties.Name="前の月"/><TextBlock Name="TodoMonthLabel" FontSize="13" Foreground="#8FE4DD" HorizontalAlignment="Center" VerticalAlignment="Center"/><Button Name="TodoMonthNext" Content="›" Width="28" FontSize="17" Padding="0" HorizontalAlignment="Right" AutomationProperties.Name="次の月"/></Grid>
+            <UniformGrid Name="TodoMonthDays" Columns="7" Margin="0,4,0,0"/>
+          </StackPanel>
+        </Border>
+        <TextBlock Name="TodoEditorMessage" Grid.Row="9" Foreground="#FFB088" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <StackPanel Grid.Row="10" Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="CancelTodoEditor" Content="取消" Margin="0,0,8,0" Padding="12,5"/><Button Name="SaveTodo" Content="追加する" Background="#287181" Foreground="#E5FFFF" Padding="16,5"/></StackPanel>
       </Grid>
     </Border>
     <Border Name="UpdatePicker" Width="422" Height="354" VerticalAlignment="Bottom" Margin="0,0,0,48" Background="#102835" BorderBrush="#528793" BorderThickness="1" CornerRadius="10" Padding="18" Visibility="Collapsed">

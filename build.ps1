@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Path $out -Force | Out-Null
 $references = @('PresentationCore', 'PresentationFramework', 'WindowsBase', 'UIAutomationClient', 'UIAutomationTypes', 'WindowsFormsIntegration') | ForEach-Object {
     '/reference:' + (Join-Path $framework "WPF\$_.dll")
 }
-$references += '/reference:System.Device.dll', '/reference:System.Web.Extensions.dll', '/reference:System.Net.Http.dll', '/reference:System.Xaml.dll', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll'
+$references += '/reference:System.Device.dll', '/reference:System.Web.Extensions.dll', '/reference:System.Net.Http.dll', '/reference:System.Xaml.dll', '/reference:System.Windows.Forms.dll', '/reference:System.Drawing.dll', '/reference:System.Security.dll'
 $versionSource = Join-Path $out 'Version.g.cs'
 $versionText = "[assembly: System.Reflection.AssemblyVersion(""$BuildVersion.0"")]`r`n[assembly: System.Reflection.AssemblyFileVersion(""$BuildVersion.0"")]`r`n[assembly: System.Reflection.AssemblyInformationalVersion(""$BuildVersion"")]"
 [IO.File]::WriteAllText($versionSource, $versionText, [Text.UTF8Encoding]::new($false))

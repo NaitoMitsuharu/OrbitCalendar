@@ -26,7 +26,7 @@ namespace OrbitCalendar
 
         void InitializeViews()
         {
-            tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab"), Get<Button>("NewsTab"), Get<Button>("TransitTab") };
+            tabs = new[] { Get<Button>("CalendarTab"), Get<Button>("MarketTab"), Get<Button>("WeatherTab"), Get<Button>("NewsTab"), Get<Button>("TransitTab"), Get<Button>("TodoTab") };
             choices = new[] { Get<Button>("Choice0"), Get<Button>("Choice1"), Get<Button>("Choice2"), Get<Button>("Choice3"), Get<Button>("Choice4") };
             tabs[0].Background = activeTab;
             InitializeMapInteraction();
@@ -57,10 +57,17 @@ namespace OrbitCalendar
             };
             IsVisibleChanged += delegate { if (!IsVisible) StopRadar(); };
 
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                int value = i;
+                tabs[i].Click += delegate { if (mode != value) { mapViewport = null; SwitchView(value); } else if (value == TodoMode && todoDetailId != null) CloseTodoDetail(); };
+            }
+            InitializeTodos();
+            InitializeTimetables();
+            ApplyTabVisibility();
             for (int i = 0; i < choices.Length; i++)
             {
                 int value = i;
-                if (i < tabs.Length) tabs[i].Click += delegate { if (mode != value) { mapViewport = null; SwitchView(value); } };
                 choices[i].Click += delegate { if (mode >= 3) { choice[mode] = value; infoPage = 0; LoadView(false); return; } if (choice[mode] != value || mode == 2) { choice[mode] = value; mapViewport = null; if (mode == 2) saved.Remove(mode * 10 + value); SwitchView(mode); } };
             }
             Get<Button>("RefreshData").Click += delegate { LoadView(true); };
@@ -86,9 +93,13 @@ namespace OrbitCalendar
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
             CancelPlaceSelection();
+            CloseTodoEditor(false);
+            CloseTimetableEditor(false);
             zoomWait.Stop();
             StopRadar();
             if (loading != null) loading.Cancel();
+            if (value != TodoMode) todoDetailId = null;
+            Get<Button>("RefreshData").Visibility = Visibility.Visible;
             mode = value;
             if (mode == 2 && !showDailyWeather && choice[2] == 0 && SavedPlace.Coordinate == null && SavedPlace.IsHidden(0))
                 choice[2] = Enumerable.Range(1, 3).FirstOrDefault(r => !SavedPlace.IsHidden(r));
@@ -97,8 +108,10 @@ namespace OrbitCalendar
             if (IsVisible) Shell.Position(this, 458, PreferredHeight);
             for (int i = 0; i < tabs.Length; i++) tabs[i].Background = i == mode ? activeTab : Brushes.Transparent;
             Get<Grid>("CalendarBody").Visibility = mode == 0 ? Visibility.Visible : Visibility.Collapsed;
-            Get<StackPanel>("DataBody").Visibility = mode == 0 ? Visibility.Collapsed : Visibility.Visible;
-            if (mode == 0) { if (IsVisible) { UpdateLayout(); effect.Start(true); } }
+            Get<StackPanel>("DataBody").Visibility = mode == 0 || mode == TodoMode ? Visibility.Collapsed : Visibility.Visible;
+            Get<Grid>("TodoBody").Visibility = mode == TodoMode ? Visibility.Visible : Visibility.Collapsed;
+            if (mode == TodoMode) RenderTodos();
+            if (mode == 0 || mode == TodoMode) { if (IsVisible) { UpdateLayout(); effect.Start(true); } }
             else LoadView(false);
         }
 
@@ -106,7 +119,7 @@ namespace OrbitCalendar
 
         async void LoadView(bool force)
         {
-            if (mode == 0 || !IsVisible || IsClosing) return;
+            if (mode == 0 || mode == TodoMode || !IsVisible || IsClosing) return;
             if (mode >= 3) { await LoadInformation(force); return; }
             if (mode == 2 && showDailyWeather) { await LoadDailyWeather(force); return; }
             if (loading != null) loading.Cancel();

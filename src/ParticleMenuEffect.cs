@@ -32,7 +32,7 @@ namespace OrbitCalendar
     {
         void InitializeParticleMenus()
         {
-            foreach (var name in new[] { "PlaceConfirm", "WeatherPlacesPicker", "PlaceEditPicker", "PlaceSearchPicker", "MarketPicker", "UpdatePicker" })
+            foreach (var name in new[] { "PlaceConfirm", "WeatherPlacesPicker", "PlaceEditPicker", "PlaceSearchPicker", "MarketPicker", "UpdatePicker", "TodoEditor", "TimetableEditor" })
             {
                 var picker = Get<Border>(name);
                 var particles = new ParticleMenuEffect { PixelSize = new Point(picker.Width, picker.Height), Pattern = Preferences.Pattern };
