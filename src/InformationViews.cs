@@ -27,7 +27,7 @@ namespace OrbitCalendar
             foreach (string name in new[] { "MarketValue", "MarketRange", "WeatherSwitch", "Plot", "TemperaturePlot", "DailyWeatherBody", "RadarControls", "RainLegend", "RadarRange", "MapTools", "MapHint", "PlotCaption", "MarketScroll", "WeatherScroll", "ManageMarkets" }) SetVisible(name, false);
             SetVisible("NewsCategories", news);
             SetVisible("InformationBody", true); SetVisible("RegionChoices", !news); SetVisible("DataChoices", !news); SetVisible("DataSource", false);
-            string[] labels = news ? new[] { "総合", "経済", "IT" } : new[] { "近隣", "JR", "私鉄" };
+            string[] labels = news ? new[] { "総合", "経済", "IT" } : new[] { "近隣", "JR", "私鉄", "時刻表" };
             for (int i = 0; i < choices.Length; i++)
             {
                 choices[i].Visibility = i < labels.Length ? Visibility.Visible : Visibility.Collapsed;
@@ -38,7 +38,15 @@ namespace OrbitCalendar
             Get<TextBlock>("DataTitle").Text = news ? "ニュース" : "運行情報";
             Get<Button>("DataSource").Content = news ? "配信元のRSS ↗" : "各路線をクリックで公式情報 ↗";
             Get<TextBlock>("DataStamp").Text = "";
+            Get<Button>("RefreshData").Visibility = Visibility.Visible;
             Get<Button>("RefreshData").IsEnabled = false;
+            if (!news && choice[4] == TimetableChoice)
+            {
+                // Saved timetables need no network; render them straight away.
+                loading = null; request.Dispose();
+                ShowTimetableView();
+                return;
+            }
             if (informationKey != key) { information = null; Get<StackPanel>("InformationBody").Children.Clear(); infoPage = 0; }
             BeginDataLoading(request);
             UpdateLayout(); effect.Start(true);

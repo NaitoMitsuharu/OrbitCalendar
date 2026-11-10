@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Automation;
@@ -73,13 +74,24 @@ namespace OrbitCalendar
             for (int r = 0; r < 7; r++) dates.RowDefinitions.Add(new RowDefinition { Height = r == 0 ? new GridLength(35) : new GridLength(1, GridUnitType.Star) });
             DrawDates();
             InitializeViews();
-            if (Preferences.LastTab != 0) SwitchView(Preferences.LastTab);
+            if (Preferences.LastTab != 0 && Preferences.TabVisible(Preferences.LastTab)) SwitchView(Preferences.LastTab);
         }
 
         void OnKey(object sender, KeyEventArgs e)
         {
             if (IsClosing) { e.Handled = true; return; }
-            if (Get<Border>("UpdatePicker").Visibility == Visibility.Visible)
+            if (Get<Border>("TodoEditor").Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape) CloseTodoEditor(true);
+                else return;
+            }
+            else if (Get<Border>("TimetableEditor").Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.Escape) CloseTimetableEditor(true);
+                else return;
+            }
+            else if (mode == TodoMode && e.Key == Key.Escape && todoDetailId != null) CloseTodoDetail();
+            else if (Get<Border>("UpdatePicker").Visibility == Visibility.Visible)
             {
                 if (e.Key == Key.Escape) CloseUpdates(true);
                 else return;
@@ -149,6 +161,22 @@ namespace OrbitCalendar
             effect.StartCalendarChange(regions.ToArray());
         }
 
+        DateTime lastDateClick = DateTime.MinValue, lastClickedDate;
+        /// <summary>
+        /// One click selects the date; a second click on the same date within the system double-click time
+        /// opens the ToDo editor with that day as the due date. The buttons are rebuilt on every selection,
+        /// so the double click is detected here rather than with the control's own MouseDoubleClick.
+        /// </summary>
+        void OnDateClick(DateTime day)
+        {
+            var now = DateTime.UtcNow;
+            bool second = day == lastClickedDate && (now - lastDateClick).TotalMilliseconds <= System.Windows.Forms.SystemInformation.DoubleClickTime;
+            lastDateClick = second ? DateTime.MinValue : now;
+            lastClickedDate = day;
+            if (second && Preferences.TabVisible(TodoMode)) { OpenTodoEditor(null, day); return; }
+            SelectDate(day);
+        }
+
         void Place(UIElement item, int col, int row)
         {
             Grid.SetColumn(item, col);
@@ -182,6 +210,7 @@ namespace OrbitCalendar
             }
             var first = new DateTime(selected.Year, selected.Month, 1);
             var start = first.AddDays(1 - IsoDay(first));
+            var dueTasks = (Preferences.TabVisible(TodoMode) ? Todos.Open : new TodoItem[0]).Where(t => t.DueDate.HasValue).GroupBy(t => t.DueDate.Value).ToDictionary(g => g.Key, g => g.ToArray());
             for (int row = 1; row <= 6; row++)
             {
                 var monday = start.AddDays(7 * (row - 1));
@@ -206,9 +235,19 @@ namespace OrbitCalendar
                         FontWeight = active ? FontWeights.Bold : FontWeights.Normal,
                         Background = active ? aqua : Brushes.Transparent,
                         Foreground = ink, Opacity = day.Month == selected.Month ? 1 : .62, ToolTip = holiday };
-                    AutomationProperties.SetName(button, (day.ToString("yyyy年M月d日", ja) + " " + holiday).TrimEnd());
-                    button.Click += delegate { SelectDate(day); };
+                    TodoItem[] tasks;
+                    dueTasks.TryGetValue(day, out tasks);
+                    string taskNames = tasks == null ? null : string.Join(Environment.NewLine, tasks.Select(t => "● " + t.Title));
+                    if (taskNames != null) button.ToolTip = holiday == null ? taskNames : holiday + Environment.NewLine + taskNames;
+                    AutomationProperties.SetName(button, (day.ToString("yyyy年M月d日", ja) + " " + holiday + (tasks == null ? "" : " 期限のタスク" + tasks.Length + "件")).TrimEnd());
+                    button.Click += delegate { OnDateClick(day); };
                     Place(button, col, row);
+                    if (tasks != null)
+                    {
+                        var mark = new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Background = active ? Art.Ink("#0B2830") : day < today ? Art.Ink("#FF9699") : Art.Ink("#F4DD8E"),
+                            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 5, 0), IsHitTestVisible = false, Tag = "todo-due-mark" };
+                        Place(mark, col, row);
+                    }
                     if (day == today)
                     {
                         var dot = new Border { Width = 4, Height = 3, CornerRadius = new CornerRadius(2), Background = active ? Art.Ink("#16454C") : aqua,
@@ -218,9 +257,38 @@ namespace OrbitCalendar
                 }
             }
             Get<TextBlock>("SelectedDate").Text = "W" + IsoWeek(selected).ToString("00") + "." + IsoDay(selected);
-            Get<TextBlock>("HolidayName").Text = Holidays.Name(selected) ?? "";
+            RenderSelectedDayStrip();
+            UpdateTodoTab();
             Get<Border>("YearGauge").Width = 422.0 * selected.DayOfYear / (DateTime.IsLeapYear(selected.Year) ? 366 : 365);
 
+        }
+
+        /// <summary>Holiday name and the titles of tasks due on the selected day, beside the W45.5 label.</summary>
+        void RenderSelectedDayStrip()
+        {
+            var holidayText = Get<TextBlock>("HolidayName");
+            var strip = Get<TextBlock>("TodoDayTasks");
+            string holiday = Holidays.Name(selected);
+            var tasks = Preferences.TabVisible(TodoMode) ? Todos.DueOn(selected) : new TodoItem[0];
+            holidayText.Text = holiday ?? "";
+            holidayText.ToolTip = holiday;
+            // Tasks get their own line under the holiday and weather, so long titles and holidays never squeeze each other.
+            strip.Inlines.Clear();
+            strip.Visibility = tasks.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (tasks.Length > 0)
+            {
+                var ink = selected < today ? Art.Ink("#FF9699") : Art.Ink("#F4DD8E");
+                if (tasks.Length == 1) strip.Inlines.Add(new System.Windows.Documents.Run("● " + tasks[0].Title) { Foreground = ink });
+                else
+                {
+                    // Count first so it stays readable even when the titles are trimmed.
+                    strip.Inlines.Add(new System.Windows.Documents.Run("● " + tasks.Length + "件  ") { Foreground = ink });
+                    strip.Inlines.Add(new System.Windows.Documents.Run(string.Join(" · ", tasks.Select(t => t.Title))) { Foreground = Art.Ink("#E3F4F4") });
+                }
+            }
+            var lines = tasks.Select(t => "● " + t.Title).ToList();
+            if (tasks.Length > 0) lines.Add("クリックでToDoを開く");
+            strip.ToolTip = lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
         }
 
         public bool IsClosing { get { return effect.Closing; } }
@@ -237,6 +305,9 @@ namespace OrbitCalendar
             ClearDataLoading();
             if (loading != null) { loading.Cancel(); nextUpdate = DateTime.MinValue; }
             CancelPlaceSelection();
+            reopenTodoEditor = Get<Border>("TodoEditor").Visibility == Visibility.Visible;
+            CloseTodoEditor(false);
+            CloseTimetableEditor(false);
             Get<Border>("TimerPicker").Visibility = Visibility.Collapsed;
             Get<Border>("SettingsPicker").Visibility = Visibility.Collapsed; Get<Border>("SpeedPicker").Visibility = Visibility.Collapsed;
             root.IsHitTestVisible = false;
@@ -252,9 +323,14 @@ namespace OrbitCalendar
             Show();
             Activate();
             if (mode == 3 && information != null) RenderInformation(informationStale);
+            if (mode == TodoMode) RenderTodos();
+            if (ShowingTimetables) RenderTimetables();
             UpdateLayout();
             effect.Start(false);
+            if (reopenTodoEditor && todoDraft != null) OpenTodoEditor(todoDraft.Id == null ? null : Todos.Find(todoDraft.Id), null);
+            reopenTodoEditor = false;
             if (mode == 0) UpdateTodayWeather();
+            else if (mode == TodoMode) { }
             else if (nextUpdate <= DateTime.UtcNow || loading == null && Get<TextBlock>("DataStamp").Text.Contains("取得中")) LoadView(false);
         }
 
@@ -262,7 +338,8 @@ namespace OrbitCalendar
         {
             if (IsClosing) return;
             if (IsVisible && mode == 0) UpdateTodayWeather();
-            if (IsVisible && mode != 0 && loading == null && DateTime.UtcNow >= nextUpdate) LoadView(false);
+            TickTimetables(now);
+            if (IsVisible && mode != 0 && mode != TodoMode && loading == null && DateTime.UtcNow >= nextUpdate) LoadView(false);
             if (today != now.Date || holidayRevision != Holidays.Revision)
             {
                 if (today != now.Date) nextTodayWeather = DateTime.MinValue;
@@ -270,6 +347,7 @@ namespace OrbitCalendar
                 holidayRevision = Holidays.Revision;
                 today = now.Date;
                 DrawDates();
+                if (mode == TodoMode && Get<Border>("TodoEditor").Visibility != Visibility.Visible) RenderTodos();
                 effect.Refresh();
             }
             timerRunning = focus.Length > 0;
